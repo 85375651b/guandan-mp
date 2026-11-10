@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "node test.js && node simulate.js"
+    "test": "node test.js && node test-server.js && node simulate.js"
   },
   "keywords": [],
   "author": "",

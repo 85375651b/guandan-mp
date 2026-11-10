@@ -37,6 +37,7 @@ Share the "on your network" link with friends on the same WiFi/LAN.
 - Open the `localhost` link yourself.
 - Send the `on your network` link to friends on the same WiFi — they open it
   in any browser (phone or computer) and pick a name to sit down.
+- Play waits until the first player clicks **Sit Down**, then starts a fresh game.
 - Empty seats play themselves (AI), so you can start solo and have friends
   join mid-session — they'll fill open seats.
 
@@ -49,8 +50,9 @@ to shut the table down.
   network (same WiFi/router). It won't work over the open internet without
   additional setup (port forwarding, a cloud host, etc.) — happy to help
   with that separately if you want to open it up to remote friends.
-- If someone's browser tab closes, AI takes over their seat immediately;
-  rejoining takes whatever seat is open (not necessarily their old one).
+- If someone's browser tab closes while others remain seated, AI takes over
+  their seat; rejoining takes whatever seat is open (not necessarily their old one).
+- When everyone leaves, play stops. The next player to sit down starts a fresh game.
 - Rules are full Guandan minus the tribute-card exchange phase between
   hands (see the in-app "Rules" button for the full list of what's covered).
 
@@ -59,4 +61,4 @@ to shut the table down.
 - `server.js` — the game server (Node + WebSocket)
 - `rules.js` — the Guandan rules engine and AI (shared logic, unit-tested)
 - `public/index.html` — the browser client
-- `test.js`, `simulate.js` — automated correctness checks (`npm test`)
+- `test.js`, `test-server.js`, `simulate.js` — automated correctness checks (`npm test`)

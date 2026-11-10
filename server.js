@@ -39,6 +39,10 @@ function seatOfWs(ws){ return seats.findIndex(s => s.ws === ws); }
 
 function findOpenSeat(){ return seats.findIndex(s => s.isAI); }
 
+function hasHumanPlayers(){
+  return seats.some(s => !s.isAI && s.ws && s.ws.readyState === 1);
+}
+
 function broadcast(){
   for (const s of seats){
     if (s.ws && s.ws.readyState === 1) sendState(s.ws);
@@ -87,6 +91,8 @@ function doPass(seat){
 function scheduleNext(){
   clearTimeout(aiTimer);
   clearTimeout(handOverTimer);
+  // An empty table must not play itself while people are opening the join screen.
+  if (!hasHumanPlayers()) { broadcast(); return; }
   if (game.gameOver) { broadcast(); return; }
   if (game.handOver){
     broadcast();
@@ -101,8 +107,11 @@ function scheduleNext(){
   }
   broadcast();
   if (seats[game.turn].isAI){
+    const scheduledGame = game;
+    const seat = game.turn;
     aiTimer = setTimeout(() => {
-      const seat = game.turn;
+      // Seat ownership may change between scheduling and running this callback.
+      if (game !== scheduledGame || !hasHumanPlayers() || !seats[seat].isAI || !game.legalTurn(seat)) return;
       const hand = game.hands[seat];
       const level = game.levelRank();
       if (game.currentTrick && game.currentTrick.playerIdx !== seat){
@@ -128,10 +137,18 @@ wss.on('connection', (ws) => {
       if (seatIdx === -1){
         seatIdx = findOpenSeat();
         if (seatIdx === -1){ sendState(ws); return; } // table full, spectator
+        if (!hasHumanPlayers()){
+          // The first player at an empty table always gets a fresh game.
+          game = new Game();
+          lastPlays = {};
+        }
         seats[seatIdx].ws = ws;
         seats[seatIdx].isAI = false;
         seats[seatIdx].name = (msg.name || 'Guest').slice(0, 20);
         game.log.push(`${seats[seatIdx].name} joins seat ${seatIdx}.`);
+        // Cancel a pending bot move for this seat and start any remaining bot turn.
+        scheduleNext();
+        return;
       }
       broadcast();
       return;

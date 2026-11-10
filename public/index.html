@@ -112,10 +112,12 @@
   .finish-list li{ padding: 4px 0; }
   .finish-list b{ color: var(--gold); }
 
-  .log-panel{ position: fixed; top: 0; right: 0; width: 320px; height: 100%; background: rgba(6,20,15,0.97); border-left: 1px solid var(--gold-dim); padding: 16px; overflow-y: auto; font-size: 12px; color: var(--cream-dim); z-index: 40; transform: translateX(100%); transition: transform 0.2s ease; }
+  .log-panel{ position: fixed; top: 0; right: 0; width: min(320px, 100vw); height: 100%; background: rgba(6,20,15,0.97); border-left: 1px solid var(--gold-dim); padding: 16px; display:flex; flex-direction:column; gap:12px; font-size: 12px; color: var(--cream-dim); z-index: 40; transform: translateX(100%); transition: transform 0.2s ease; }
   .log-panel.open{ transform: translateX(0); }
-  .log-panel h3{ color: var(--gold); font-size:14px; margin-top:0; }
-  .log-panel div{ padding: 3px 0; border-bottom: 1px dashed rgba(255,255,255,0.08); }
+  .log-header{ display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
+  .log-panel h3{ color: var(--gold); font-size:14px; margin:0; }
+  #log-body{ flex:1; min-height:0; overflow-y:auto; }
+  #log-body > div{ padding: 3px 0; border-bottom: 1px dashed rgba(255,255,255,0.08); }
 
   .rules-toggle{ position:absolute; top: 10px; left: 18px; z-index: 6; }
   .rules-body{ text-align:left; font-size:13px; max-height: 50vh; overflow-y:auto; }
@@ -144,7 +146,7 @@
       <div class="level-badge team1"><span class="dot"></span>Team B: <b id="lvl-team1">2</b></div>
       <div class="level-badge"><span style="color:var(--wild-glow)">Wild:</span> <b id="lvl-wild">2♥</b></div>
     </div>
-    <button class="btn-log" id="btn-log">Log</button>
+    <button class="btn-log" id="btn-log" aria-controls="log-panel" aria-expanded="false">Log</button>
   </div>
 
   <div class="center-area">
@@ -179,7 +181,13 @@
   </div>
 </div>
 
-<div class="log-panel" id="log-panel"><h3>Play log</h3><div id="log-body"></div></div>
+<div class="log-panel" id="log-panel" role="region" aria-labelledby="log-title" inert>
+  <div class="log-header">
+    <h3 id="log-title">Play log</h3>
+    <button class="btn-log" id="btn-close-log" aria-label="Close play log">Close</button>
+  </div>
+  <div id="log-body"></div>
+</div>
 
 <div class="overlay" id="overlay-join">
   <div class="panel">
@@ -453,7 +461,18 @@ el('btn-newgame').addEventListener('click', () => {
   if (!ws || ws.readyState !== 1) return;
   ws.send(JSON.stringify({ type: 'newgame' }));
 });
-el('btn-log').addEventListener('click', () => el('log-panel').classList.toggle('open'));
+function setLogOpen(open){
+  const panel = el('log-panel');
+  panel.inert = !open;
+  panel.classList.toggle('open', open);
+  el('btn-log').setAttribute('aria-expanded', String(open));
+  el(open ? 'btn-close-log' : 'btn-log').focus();
+}
+el('btn-log').addEventListener('click', () => setLogOpen(!el('log-panel').classList.contains('open')));
+el('btn-close-log').addEventListener('click', () => setLogOpen(false));
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && el('log-panel').classList.contains('open')) setLogOpen(false);
+});
 el('btn-rules').addEventListener('click', () => el('overlay-rules').classList.remove('hidden'));
 el('btn-close-rules').addEventListener('click', () => el('overlay-rules').classList.add('hidden'));
 </script>
