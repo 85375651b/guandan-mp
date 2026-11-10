@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>掼蛋 Guandan — Table</title>
+<style>
+  :root{
+    --felt-1: #0e3d2f;
+    --felt-2: #0a2b21;
+    --felt-edge: #062018;
+    --gold: #c9a24b;
+    --gold-dim: #8f7638;
+    --ivory: #f4ecd8;
+    --ink: #201a12;
+    --red: #9c2b25;
+    --cream: #ede3c8;
+    --cream-dim: #b8ac8c;
+    --wild-glow: #e7c565;
+  }
+  *{ box-sizing: border-box; }
+  html,body{ height:100%; }
+  body{
+    margin:0;
+    font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: radial-gradient(ellipse at 50% 20%, var(--felt-1) 0%, var(--felt-2) 55%, var(--felt-edge) 100%);
+    color: var(--cream);
+    overflow: hidden;
+    height: 100vh;
+    user-select: none;
+  }
+  .table{ position: relative; width: 100%; height: 100%; display: grid; grid-template-rows: auto 1fr auto; }
+
+  .topbar{
+    display:flex; align-items:center; justify-content: space-between;
+    padding: 10px 18px;
+    background: linear-gradient(180deg, rgba(0,0,0,0.35), transparent);
+    border-bottom: 1px solid rgba(201,162,75,0.25);
+    z-index: 5;
+  }
+  .title{ font-family: Georgia, "Songti SC", serif; font-size: 20px; letter-spacing: 0.06em; color: var(--gold); display:flex; align-items:center; gap:10px; }
+  .levels{ display:flex; gap: 16px; flex-wrap:wrap; }
+  .level-badge{ display:flex; align-items:center; gap:8px; padding: 5px 12px; border: 1px solid var(--gold-dim); border-radius: 20px; background: rgba(0,0,0,0.25); font-size: 13px; }
+  .level-badge .dot{ width:10px;height:10px;border-radius:50%; }
+  .level-badge.team0 .dot{ background: #6fb3a0; }
+  .level-badge.team1 .dot{ background: #c97a5a; }
+  .level-badge b{ color: var(--gold); font-size:15px; }
+  .btn-log{ background: transparent; border: 1px solid var(--gold-dim); color: var(--cream-dim); border-radius: 8px; padding: 5px 10px; font-size: 12px; cursor: pointer; }
+  .btn-log:hover{ border-color: var(--gold); color: var(--gold); }
+
+  .center-area{ position: relative; display: grid; grid-template-columns: 150px 1fr 150px; grid-template-rows: 90px 1fr; padding: 8px 24px; min-height: 0; }
+  .seat-partner{ grid-column: 2; grid-row: 1; display:flex; flex-direction:column; align-items:center; gap:4px; }
+  .seat-left{ grid-column: 1; grid-row: 2; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; }
+  .seat-right{ grid-column: 3; grid-row: 2; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; }
+  .trick-zone{ grid-column: 2; grid-row: 2; display:flex; align-items:center; justify-content:center; }
+
+  .seat-label{ font-size: 12px; color: var(--cream-dim); letter-spacing: 0.03em; display:flex; align-items:center; gap:6px; text-align:center; }
+  .seat-label .turn-dot{ width:8px;height:8px;border-radius:50%; background: var(--gold); opacity:0; box-shadow: 0 0 8px var(--gold); flex-shrink:0; }
+  .seat-label.active .turn-dot{ opacity:1; }
+  .seat-label.active{ color: var(--gold); }
+  .cardback-fan{ display:flex; }
+  .cardback-fan.horizontal .cb{ width:26px; height:38px; margin-left:-16px; }
+  .cardback-fan.vertical{ flex-direction:column; }
+  .cardback-fan.vertical .cb{ width:32px; height:44px; margin-top:-30px; }
+  .cb{ background: repeating-linear-gradient(135deg, #6e2020, #6e2020 4px, #7c2a2a 4px, #7c2a2a 8px); border: 1px solid var(--gold-dim); border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.4); }
+  .cardback-fan .cb:first-child{ margin: 0; }
+
+  .played-group{ display:flex; flex-direction:column; align-items:center; gap:4px; padding: 6px 10px; min-width: 70px; }
+  .played-cards{ display:flex; }
+  .played-cards .card{ margin-left: -18px; }
+  .played-cards .card:first-child{ margin-left:0; }
+  .played-tag{ font-size:11px; color: var(--cream-dim); }
+  .trick-inner{ display:flex; gap: 22px; align-items:center; flex-wrap: wrap; justify-content:center; max-width: 640px; }
+  .trick-empty{ color: var(--cream-dim); font-size: 13px; font-style: italic; opacity:0.7; }
+
+  .card{ width: 52px; height: 74px; background: var(--ivory); border-radius: 6px; border: 1px solid rgba(0,0,0,0.25); box-shadow: 0 2px 3px rgba(0,0,0,0.35); display:flex; flex-direction:column; justify-content: space-between; padding: 4px 5px; font-weight:700; font-size: 14px; line-height:1; position: relative; flex-shrink:0; }
+  .card.small{ width:40px; height:56px; font-size:11px; padding:3px 4px; }
+  .card .suit-icon{ width:16px; height:16px; align-self:flex-end; }
+  .card.small .suit-icon{ width:12px; height:12px; }
+  .card.red{ color: var(--red); }
+  .card.black{ color: var(--ink); }
+  .card.wild{ box-shadow: 0 0 0 2px var(--wild-glow), 0 2px 6px rgba(0,0,0,0.4); }
+  .card.wild::after{ content: '万'; position:absolute; bottom: 2px; right: 3px; font-size: 9px; color: var(--gold-dim); }
+  .card.level-card{ box-shadow: 0 0 0 1.5px var(--gold-dim), 0 2px 3px rgba(0,0,0,0.35); }
+  .card.level-card::after{ content: '级'; position:absolute; bottom: 2px; right: 3px; font-size: 9px; color: var(--gold-dim); }
+  .card.joker-big, .card.joker-small{ justify-content:center; align-items:center; text-align:center; font-size:11px; }
+  .card.joker-big{ color: var(--red); }
+  .card.joker-small{ color: var(--ink); }
+
+  .hand-bar{ position: relative; padding: 10px 18px 14px; background: linear-gradient(0deg, rgba(0,0,0,0.4), transparent); border-top: 1px solid rgba(201,162,75,0.25); z-index: 5; }
+  .hand-count{ text-align:center; font-size: 12px; color: var(--cream-dim); letter-spacing: 0.05em; margin-bottom: 2px; }
+  .hand-row{ display:flex; justify-content:center; gap: 0; overflow-x:auto; padding: 10px 4px 4px; min-height: 84px; }
+  .hand-row .card{ cursor:pointer; transition: transform 0.12s ease; flex-shrink:0; }
+  .hand-row .card:first-child{ margin-left:0 !important; }
+  .hand-row .card:hover{ transform: translateY(-8px); }
+  .hand-row .card.selected{ transform: translateY(-16px); box-shadow: 0 0 0 2px var(--gold), 0 6px 10px rgba(0,0,0,0.5); }
+
+  .controls{ display:flex; align-items:center; justify-content:center; gap: 14px; margin-top: 4px; flex-wrap: wrap; }
+  .controls .status{ font-size: 13px; color: var(--cream-dim); min-width: 220px; text-align:center; }
+  .btn{ padding: 9px 22px; border-radius: 22px; border: 1px solid var(--gold-dim); background: rgba(0,0,0,0.3); color: var(--gold); font-size: 14px; letter-spacing: 0.03em; cursor: pointer; transition: all 0.15s ease; }
+  .btn:hover:not(:disabled){ background: var(--gold); color: var(--ink); }
+  .btn:disabled{ opacity: 0.35; cursor: default; }
+  .btn.secondary{ color: var(--cream-dim); }
+
+  .overlay{ position: fixed; inset:0; background: rgba(3,10,7,0.72); display:flex; align-items:center; justify-content:center; z-index: 50; }
+  .overlay.hidden{ display:none; }
+  .panel{ background: linear-gradient(160deg, #123c2f, #0a2820); border: 1px solid var(--gold-dim); border-radius: 12px; padding: 28px 34px; max-width: 440px; text-align:center; box-shadow: 0 20px 60px rgba(0,0,0,0.6); }
+  .panel h2{ font-family: Georgia, "Songti SC", serif; color: var(--gold); margin: 0 0 6px; font-size: 22px; }
+  .panel p{ color: var(--cream-dim); font-size: 14px; line-height:1.6; }
+  .panel input{ width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--gold-dim); background: rgba(0,0,0,0.3); color: var(--cream); font-size:14px; margin: 12px 0; }
+  .finish-list{ list-style:none; padding:0; margin: 14px 0; font-size:14px; }
+  .finish-list li{ padding: 4px 0; }
+  .finish-list b{ color: var(--gold); }
+
+  .log-panel{ position: fixed; top: 0; right: 0; width: 320px; height: 100%; background: rgba(6,20,15,0.97); border-left: 1px solid var(--gold-dim); padding: 16px; overflow-y: auto; font-size: 12px; color: var(--cream-dim); z-index: 40; transform: translateX(100%); transition: transform 0.2s ease; }
+  .log-panel.open{ transform: translateX(0); }
+  .log-panel h3{ color: var(--gold); font-size:14px; margin-top:0; }
+  .log-panel div{ padding: 3px 0; border-bottom: 1px dashed rgba(255,255,255,0.08); }
+
+  .rules-toggle{ position:absolute; top: 10px; left: 18px; z-index: 6; }
+  .rules-body{ text-align:left; font-size:13px; max-height: 50vh; overflow-y:auto; }
+  .rules-body h4{ color:var(--gold); margin: 12px 0 4px; }
+  .rules-body ul{ margin: 4px 0; padding-left: 18px; }
+
+  .conn-banner{ position:fixed; top:0; left:0; right:0; background:#7c2a2a; color:#fff; text-align:center; font-size:13px; padding:6px; z-index:60; }
+  .conn-banner.hidden{ display:none; }
+
+  @media (max-width: 720px){
+    .center-area{ grid-template-columns: 70px 1fr 70px; padding: 4px 8px; }
+    .card{ width:40px; height:58px; font-size:12px; }
+    .hand-row .card{ margin-left:-24px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="conn-banner hidden" id="conn-banner">Connection lost — trying to reconnect…</div>
+
+<div class="table">
+  <div class="topbar">
+    <div class="title">掼蛋 <span style="font-size:13px;color:var(--cream-dim);font-weight:normal;">Guandan · Table</span></div>
+    <div class="levels">
+      <div class="level-badge team0"><span class="dot"></span>Team A: <b id="lvl-team0">2</b></div>
+      <div class="level-badge team1"><span class="dot"></span>Team B: <b id="lvl-team1">2</b></div>
+      <div class="level-badge"><span style="color:var(--wild-glow)">Wild:</span> <b id="lvl-wild">2♥</b></div>
+    </div>
+    <button class="btn-log" id="btn-log">Log</button>
+  </div>
+
+  <div class="center-area">
+    <button class="btn-log rules-toggle" id="btn-rules">Rules</button>
+
+    <div class="seat-partner">
+      <div class="seat-label" id="label-top"><span class="turn-dot"></span><span class="lbl-text">Partner</span></div>
+      <div class="cardback-fan horizontal" id="backs-top"></div>
+    </div>
+    <div class="seat-left">
+      <div class="seat-label" id="label-left"><span class="turn-dot"></span><span class="lbl-text">Opponent</span></div>
+      <div class="cardback-fan vertical" id="backs-left"></div>
+    </div>
+    <div class="seat-right">
+      <div class="seat-label" id="label-right"><span class="turn-dot"></span><span class="lbl-text">Opponent</span></div>
+      <div class="cardback-fan vertical" id="backs-right"></div>
+    </div>
+    <div class="trick-zone">
+      <div class="trick-inner" id="trick-inner"><div class="trick-empty">Waiting for the opening lead…</div></div>
+    </div>
+  </div>
+
+  <div class="hand-bar">
+    <div class="hand-count" id="hand-count">Your hand</div>
+    <div class="hand-row" id="hand-row"></div>
+    <div class="controls">
+      <button class="btn" id="btn-play">Play Selected</button>
+      <button class="btn secondary" id="btn-pass">Pass</button>
+      <button class="btn secondary" id="btn-clear">Clear Selection</button>
+      <div class="status" id="status">Connecting…</div>
+    </div>
+  </div>
+</div>
+
+<div class="log-panel" id="log-panel"><h3>Play log</h3><div id="log-body"></div></div>
+
+<div class="overlay" id="overlay-join">
+  <div class="panel">
+    <h2>Join the table</h2>
+    <p>Seats fill up to 4 players. Empty seats are played by AI, so the game works solo too.</p>
+    <input id="name-input" placeholder="Your name" maxlength="20">
+    <button class="btn" id="btn-join">Sit Down</button>
+  </div>
+</div>
+
+<div class="overlay hidden" id="overlay-rules">
+  <div class="panel" style="max-width:560px;">
+    <h2>How to play</h2>
+    <div class="rules-body">
+      <p>Seats 0 &amp; 2 are Team A, seats 1 &amp; 3 are Team B. Two decks (108 cards) are used.</p>
+      <h4>Card strength (low → high)</h4>
+      <p>3 4 5 6 7 8 9 10 J Q K A 2, then the wildcard, then the small joker, then the big joker.</p>
+      <h4>The level card</h4>
+      <p>Each hand has a "level" rank (top bar). All four suits of that rank rank above Ace, just below the jokers. The <b>Hearts</b> copy is additionally a wildcard — it can stand in for any card to help complete a pair, triple, straight, tractor, plane, or even a bomb (marked with 万 on the card). The other three suits are just very strong natural cards, not substitutes (marked with 级).</p>
+      <h4>Combos</h4>
+      <ul>
+        <li>Single, Pair, Triple, Triple+Pair</li>
+        <li>Straight — exactly 5 consecutive singles (not 4, not 6)</li>
+        <li>Tractor ("helicopter") — exactly 3 consecutive pairs, 6 cards (e.g. 667788)</li>
+        <li>Plane ("airplane") — exactly 2 consecutive triples, 6 cards (e.g. 666777)</li>
+        <li>Bomb — 4+ of a rank, or an exactly-5-card same-suit straight flush; beats anything smaller</li>
+        <li>Joker Bomb — all four jokers, beats everything</li>
+      </ul>
+      <h4>Winning</h4>
+      <p>Hand ends when 3 players finish. Your team's level jumps +3 if you finish 1st &amp; 2nd, +2 for 1st &amp; 3rd, +1 for 1st &amp; 4th. First team past level A wins.</p>
+      <p style="opacity:0.7;font-size:12px;margin-top:10px;">Simplified from tournament rules: no tribute-card exchange phase between hands.</p>
+    </div>
+    <button class="btn" id="btn-close-rules" style="margin-top:14px;">Got it</button>
+  </div>
+</div>
+
+<div class="overlay hidden" id="overlay-hand">
+  <div class="panel">
+    <h2 id="hand-title">Hand over</h2>
+    <ul class="finish-list" id="hand-finish"></ul>
+    <p id="hand-summary"></p>
+    <p style="font-size:12px;opacity:0.7;">Next hand starts automatically…</p>
+  </div>
+</div>
+
+<div class="overlay hidden" id="overlay-game">
+  <div class="panel">
+    <h2 id="game-title">Game over</h2>
+    <p id="game-summary"></p>
+    <button class="btn" id="btn-newgame">New Game</button>
+  </div>
+</div>
+
+<script>
+const SUIT_PATHS = {
+  S: 'M12 2C9 6 4 10 4 14a4 4 0 0 0 7 2.6c-.3 2-1 3.4-3 4.4h8c-2-1-2.7-2.4-3-4.4A4 4 0 0 0 20 14c0-4-5-8-8-12z',
+  H: 'M12 21s-7-4.35-9.5-8.5C.5 9 2 5 6 5c2 0 4 1.5 6 4 2-2.5 4-4 6-4 4 0 5.5 4 3.5 7.5C19 16.65 12 21 12 21z',
+  D: 'M12 2 L20 12 L12 22 L4 12 Z',
+  C: 'M12 3a3 3 0 0 1 2.6 4.5A3 3 0 1 1 15 13c-.4 0-.8-.1-1.1-.2.4 2 1.3 3.5 3.1 4.7H9c1.8-1.2 2.7-2.7 3.1-4.7-.3.1-.7.2-1.1.2a3 3 0 1 1 .4-5.5A3 3 0 0 1 12 3z'
+};
+const SUIT_COLOR = { S:'black', H:'red', D:'red', C:'black' };
+
+const el = id => document.getElementById(id);
+let state = null;
+let selected = new Set();
+let ws = null;
+let myName = '';
+let reconnectTimer = null;
+
+function suitSvg(suit){
+  return `<svg class="suit-icon" viewBox="0 0 24 24" fill="currentColor"><path d="${SUIT_PATHS[suit]}"/></svg>`;
+}
+
+function cardEl(card, opts){
+  opts = opts || {};
+  const d = document.createElement('div');
+  d.className = 'card' + (opts.small ? ' small' : '');
+  if (card.joker){
+    d.classList.add(card.joker === 'big' ? 'joker-big' : 'joker-small');
+    d.textContent = card.joker === 'big' ? '大王' : '小王';
+  } else {
+    d.classList.add(SUIT_COLOR[card.suit]);
+    if (opts.isWild) d.classList.add('wild');
+    else if (opts.isLevel) d.classList.add('level-card');
+    const rankSpan = document.createElement('div');
+    rankSpan.textContent = card.rank;
+    d.appendChild(rankSpan);
+    const suitSpan = document.createElement('div');
+    suitSpan.innerHTML = suitSvg(card.suit);
+    d.appendChild(suitSpan);
+  }
+  return d;
+}
+
+function isWildCard(card, levelRank){
+  return !card.joker && card.suit === 'H' && card.rank === levelRank;
+}
+function isLevelCard(card, levelRank){
+  return !card.joker && card.rank === levelRank;
+}
+
+function connect(){
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  ws = new WebSocket(`${proto}//${location.host}`);
+  ws.onopen = () => {
+    el('conn-banner').classList.add('hidden');
+    if (myName) ws.send(JSON.stringify({ type: 'join', name: myName }));
+  };
+  ws.onmessage = (ev) => {
+    state = JSON.parse(ev.data);
+    render();
+  };
+  ws.onclose = () => {
+    el('conn-banner').classList.remove('hidden');
+    clearTimeout(reconnectTimer);
+    reconnectTimer = setTimeout(connect, 1500);
+  };
+  ws.onerror = () => { ws.close(); };
+}
+
+el('btn-join').addEventListener('click', () => {
+  myName = (el('name-input').value || 'Guest').trim().slice(0, 20) || 'Guest';
+  el('overlay-join').classList.add('hidden');
+  connect();
+});
+el('name-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') el('btn-join').click(); });
+
+function slotSeat(slot){
+  const mine = (state && state.yourSeat !== null && state.yourSeat !== undefined) ? state.yourSeat : 0;
+  const offsets = { right: 1, top: 2, left: 3 };
+  return (mine + offsets[slot]) % 4;
+}
+
+function render(){
+  if (!state) return;
+  const mySeat = state.yourSeat;
+
+  el('lvl-team0').textContent = state.teamLevel[0] >= 12 ? 'A' + (state.teamLevel[0] > 12 ? '+' : '') : ['2','3','4','5','6','7','8','9','10','J','Q','K','A'][Math.min(state.teamLevel[0],12)];
+  el('lvl-team1').textContent = state.teamLevel[1] >= 12 ? 'A' + (state.teamLevel[1] > 12 ? '+' : '') : ['2','3','4','5','6','7','8','9','10','J','Q','K','A'][Math.min(state.teamLevel[1],12)];
+  el('lvl-wild').textContent = state.levelRank + '♥';
+
+  for (const slot of ['top','left','right']){
+    const seat = slotSeat(slot);
+    const label = el('label-' + slot);
+    const name = state.seatNames[seat] + (state.seatIsAI[seat] ? ' (AI)' : '');
+    label.querySelector('.lbl-text').textContent = `Seat ${seat}: ${name}`;
+    label.classList.toggle('active', state.turn === seat && !state.handOver);
+    const backs = el('backs-' + slot);
+    backs.innerHTML = '';
+    const count = Math.min(state.handCounts[seat], 20);
+    for (let i = 0; i < count; i++){ const d = document.createElement('div'); d.className = 'cb'; backs.appendChild(d); }
+  }
+
+  const trickInner = el('trick-inner');
+  trickInner.innerHTML = '';
+  const seatsWithPlays = Object.keys(state.lastPlays || {});
+  if (seatsWithPlays.length === 0){
+    const e = document.createElement('div');
+    e.className = 'trick-empty';
+    e.textContent = 'New trick — waiting for the lead…';
+    trickInner.appendChild(e);
+  } else {
+    for (let seat = 0; seat < 4; seat++){
+      const p = state.lastPlays[seat];
+      if (!p) continue;
+      const grp = document.createElement('div');
+      grp.className = 'played-group';
+      const tag = document.createElement('div');
+      tag.className = 'played-tag';
+      tag.textContent = (seat === mySeat ? 'You' : state.seatNames[seat]);
+      const cardsWrap = document.createElement('div');
+      cardsWrap.className = 'played-cards';
+      for (const c of p.cards) cardsWrap.appendChild(cardEl(c, { small: true, isWild: isWildCard(c, state.levelRank), isLevel: isLevelCard(c, state.levelRank) }));
+      grp.appendChild(tag);
+      grp.appendChild(cardsWrap);
+      trickInner.appendChild(grp);
+    }
+  }
+
+  const handRow = el('hand-row');
+  handRow.innerHTML = '';
+  const yourTurn = mySeat !== null && state.turn === mySeat && !state.handOver && !state.gameOver;
+  if (mySeat !== null && state.yourHand){
+    el('hand-count').textContent = `Your hand — ${state.yourHand.length} card${state.yourHand.length === 1 ? '' : 's'}`;
+    const cardW = 52;
+    const containerW = handRow.clientWidth || (window.innerWidth - 40);
+    const count = state.yourHand.length;
+    // Space cards so the whole hand fits without needing to scroll, but never overlap more
+    // than necessary (always leave at least ~14px of each card visible).
+    let overlap = 0;
+    if (count > 1){
+      overlap = (cardW * count - containerW) / (count - 1);
+      overlap = Math.max(0, Math.min(overlap, cardW - 14));
+    }
+    state.yourHand.forEach((c, i) => {
+      const d = cardEl(c, { isWild: isWildCard(c, state.levelRank), isLevel: isLevelCard(c, state.levelRank) });
+      if (i > 0) d.style.marginLeft = `-${overlap}px`;
+      if (selected.has(c.uid)) d.classList.add('selected');
+      d.addEventListener('click', () => {
+        if (!yourTurn) return;
+        if (selected.has(c.uid)) selected.delete(c.uid); else selected.add(c.uid);
+        render();
+      });
+      handRow.appendChild(d);
+    });
+  } else {
+    el('hand-count').textContent = mySeat === null ? 'Spectating' : 'Your hand';
+  }
+
+  el('btn-play').disabled = !yourTurn || selected.size === 0;
+  el('btn-pass').disabled = !yourTurn || !state.currentTrick;
+  el('btn-clear').disabled = selected.size === 0;
+
+  const statusEl = el('status');
+  if (state.gameOver){ statusEl.textContent = 'Game over.'; }
+  else if (mySeat === null){ statusEl.textContent = 'Table is full — you are spectating.'; }
+  else if (state.handOver){ statusEl.textContent = 'Hand finished — next hand starting…'; }
+  else if (yourTurn){
+    statusEl.textContent = state.currentTrick
+      ? `Your turn — beat ${state.currentTrick.combo.type.replace('_',' ').toLowerCase()} (${state.currentTrick.combo.size}) or pass.`
+      : 'Your turn — lead any combo.';
+  } else {
+    statusEl.textContent = `Waiting on ${state.seatNames[state.turn]}…`;
+  }
+
+  const logBody = el('log-body');
+  logBody.innerHTML = (state.log || []).map(l => `<div>${l}</div>`).join('');
+  logBody.scrollTop = logBody.scrollHeight;
+
+  if (state.handOver && !state.gameOver){
+    const r = state.lastResult;
+    if (r){
+      const list = el('hand-finish');
+      const actualCount = r.actualFinishCount || r.finishedOrder.length;
+      list.innerHTML = r.finishedOrder.map((seat, i) => {
+        const who = seat === mySeat ? 'You' : state.seatNames[seat];
+        if (i < actualCount){
+          return `<li>${i+1}${['st','nd','rd','th'][i]}: <b>${who}</b></li>`;
+        }
+        return `<li style="opacity:0.65;">Did not finish — hand ended: <b>${who}</b></li>`;
+      }).join('');
+      const teamName = r.winTeam === (mySeat!==null ? mySeat%2 : 0) ? 'Your team' : 'The other team';
+      el('hand-summary').textContent = `Team ${r.winTeam === 0 ? 'A' : 'B'} advances +${r.upgrade} level${r.upgrade>1?'s':''}.`;
+      el('hand-title').textContent = `Team ${r.winTeam === 0 ? 'A' : 'B'} wins the hand!`;
+      el('overlay-hand').classList.remove('hidden');
+    }
+  } else {
+    el('overlay-hand').classList.add('hidden');
+  }
+
+  if (state.gameOver){
+    el('game-title').textContent = `Team ${state.winner === 0 ? 'A' : 'B'} wins the game! 🎉`;
+    el('game-summary').textContent = `Final levels — Team A: ${el('lvl-team0').textContent}, Team B: ${el('lvl-team1').textContent}`;
+    el('overlay-game').classList.remove('hidden');
+  } else {
+    el('overlay-game').classList.add('hidden');
+  }
+}
+
+el('btn-play').addEventListener('click', () => {
+  if (!ws || ws.readyState !== 1) return;
+  ws.send(JSON.stringify({ type: 'play', uids: Array.from(selected) }));
+  selected.clear();
+});
+el('btn-pass').addEventListener('click', () => {
+  if (!ws || ws.readyState !== 1) return;
+  ws.send(JSON.stringify({ type: 'pass' }));
+});
+el('btn-clear').addEventListener('click', () => { selected.clear(); render(); });
+el('btn-newgame').addEventListener('click', () => {
+  if (!ws || ws.readyState !== 1) return;
+  ws.send(JSON.stringify({ type: 'newgame' }));
+});
+el('btn-log').addEventListener('click', () => el('log-panel').classList.toggle('open'));
+el('btn-rules').addEventListener('click', () => el('overlay-rules').classList.remove('hidden'));
+el('btn-close-rules').addEventListener('click', () => el('overlay-rules').classList.add('hidden'));
+</script>
+</body>
+</html>

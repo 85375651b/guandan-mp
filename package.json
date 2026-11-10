@@ -1,0 +1,16 @@
+{
+  "name": "guandan-table",
+  "version": "1.0.0",
+  "description": "Offline/LAN multiplayer Guandan with AI filling empty seats",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test.js && node simulate.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "ws": "^8.21.0"
+  }
+}
