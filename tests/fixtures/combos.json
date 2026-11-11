@@ -1,0 +1,2057 @@
+[
+  {
+    "cards": [
+      {
+        "uid": 0,
+        "rank": 9,
+        "suit": "Spades"
+      }
+    ],
+    "level": 5,
+    "expected": {
+      "kind": "Single",
+      "size": 1,
+      "strength": 7,
+      "rank": 9,
+      "bomb": "None"
+    }
+  },
+  {
+    "cards": [
+      {
+        "uid": 0,
+        "rank": 5,
+        "suit": "Hearts"
+      }
+    ],
+    "level": 5,
+    "expected": {
+      "kind": "Single",
+      "size": 1,
+      "strength": 13,
+      "rank": 5,
+      "bomb": "None"
+    }
+  },
+  {
+    "cards": [
+      {
+        "uid": 0,
+        "rank": 16,
+        "suit": "Joker"
+      }
+    ],
+    "level": 5,
+    "expected": {
+      "kind": "Single",
+      "size": 1,
+      "strength": 15,
+      "rank": 16,
+      "bomb": "None"
+    }
+  },
+  {
+    "cards": [
+      {
+        "uid": 0,
+        "rank": 15,
+        "suit": "Joker"
+      }
+    ],
+    "level": 5,
+    "expected": {
+      "kind": "Single",
+      "size": 1,
+      "strength": 14,
+      "rank": 15,
+      "bomb": "None"
+    }
+  },
+  {
+    "cards": [
+      {
+        "uid": 0,
+        "rank": 9,
+        "suit": "Spades"
+      },
+      {
+        "uid": 1,
+        "rank": 9,
+        "suit": "Hearts"
+      }
+    ],
+    "level": 5,
+    "expected": {
+      "kind": "Pair",
+      "size": 2,
+      "strength": 7,
+      "rank": 9,
+      "bomb": "None"
+    }
+  },
+  {
+    "cards": [
+      {
+        "uid": 0,
+        "rank": 9,
+        "suit": "Spades"
+      },
+      {
+        "uid": 1,
+        "rank": 5,
+        "suit": "Hearts"
+      }
+    ],
+    "level": 5,
+    "expected": {
+      "kind": "Pair",
+      "size": 2,
+      "strength": 7,
+      "rank": 9,
+      "bomb": "None"
+    }
+  },
+  {
+    "cards": [
+      {
+        "uid": 0,
+        "rank": 9,
+        "suit": "Spades"
+      },
+      {
+        "uid": 1,
+        "rank": 8,
+        "suit": "Hearts"
+      }
+    ],
+    "level": 5,
+    "expected": null
+  },
+  {
+    "cards": [
+      {
+        "uid": 0,
+        "rank": 11,
+        "suit": "Spades"
+      },
+      {
+        "uid": 1,
+        "rank": 11,
+        "suit": "Diamonds"
+      },
+      {
+        "uid": 2,
+        "rank": 5,
+        "suit": "Hearts"
+      }
+    ],
+    "level": 5,
+    "expected": {
+      "kind": "Triple",
+      "size": 3,
+      "strength": 9,
+      "rank": 11,
+      "bomb": "None"
+    }
+  },
+  {
+    "cards": [
+      {
+        "uid": 0,
+        "rank": 7,
+        "suit": "Spades"
+      },
+      {
+        "uid": 1,
+        "rank": 7,
+        "suit": "Diamonds"
+      },
+      {
+        "uid": 2,
+        "rank": 7,
+        "suit": "Clubs"
+      },
+      {
+        "uid": 3,
+        "rank": 13,
+        "suit": "Spades"
+      },
+      {
+        "uid": 4,
+        "rank": 13,
+        "suit": "Hearts"
+      }
+    ],
+    "level": 5,
+    "expected": {
+      "kind": "FullHouse",
+      "size": 5,
+      "strength": 5,
+      "rank": 7,
+      "bomb": "None"
+    }
+  },
+  {
+    "cards": [
+      {
+        "uid": 0,
+        "rank": 6,
+        "suit": "Spades"
+      },
+      {
+        "uid": 1,
+        "rank": 6,
+        "suit": "Diamonds"
+      },
+      {
+        "uid": 2,
+        "rank": 7,
+        "suit": "Spades"
+      },
+      {
+        "uid": 3,
+        "rank": 7,
+        "suit": "Diamonds"
+      }
+    ],
+    "level": 5,
+    "expected": null
+  },
+  {
+    "cards": [
+      {
+        "uid": 0,
+        "rank": 6,
+        "suit": "Spades"
+      },
+      {
+        "uid": 1,
+        "rank": 6,
+        "suit": "Diamonds"
+      },
+      {
+        "uid": 2,
+        "rank": 7,
+        "suit": "Spades"
+      },
+      {
+        "uid": 3,
+        "rank": 7,
+        "suit": "Diamonds"
+      },
+      {
+        "uid": 4,
+        "rank": 8,
+        "suit": "Spades"
+      },
+      {
+        "uid": 5,
+        "rank": 8,
+        "suit": "Diamonds"
+      }
+    ],
+    "level": 5,
+    "expected": {
+      "kind": "Tractor",
+      "size": 6,
+      "strength": 6,
+      "rank": 8,
+      "bomb": "None"
+    }
+  },
+  {
+    "cards": [
+      {
+        "uid": 0,
+        "rank": 6,
+        "suit": "Spades"
+      },
+      {
+        "uid": 1,
+        "rank": 6,
+        "suit": "Diamonds"
+      },
+      {
+        "uid": 2,
+        "rank": 7,
+        "suit": "Spades"
+      },
+      {
+        "uid": 3,
+        "rank": 7,
+        "suit": "Diamonds"
+      },
+      {
+        "uid": 4,
+        "rank": 8,
+        "suit": "Spades"
+      },
+      {
+        "uid": 5,
+        "rank": 5,
+        "suit": "Hearts"
+      }
+    ],
+    "level": 5,
+    "expected": {
+      "kind": "Tractor",
+      "size": 6,
+      "strength": 6,
+      "rank": 8,
+      "bomb": "None"
+    }
+  },
+  {
+    "cards": [
+      {
+        "uid": 0,
+        "rank": 9,
+        "suit": "Spades"
+      },
+      {
+        "uid": 1,
+        "rank": 10,
+        "suit": "Diamonds"
+      },
+      {
+        "uid": 2,
+        "rank": 11,
+        "suit": "Clubs"
+      },
+      {
+        "uid": 3,
+        "rank": 12,
+        "suit": "Hearts"
+      },
+      {
+        "uid": 4,
+        "rank": 13,
+        "suit": "Spades"
+      }
+    ],
+    "level": 5,
+    "expected": {
+      "kind": "Straight",
+      "size": 5,
+      "strength": 11,
+      "rank": 13,
+      "bomb": "None"
+    }
+  },
+  {
+    "cards": [
+      {
+        "uid": 0,
+        "rank": 10,
+        "suit": "Spades"
+      },
+      {
+        "uid": 1,
+        "rank": 11,
+        "suit": "Diamonds"
+      },
+      {
+        "uid": 2,
+        "rank": 12,
+        "suit": "Clubs"
+      },
+      {
+        "uid": 3,
+        "rank": 13,
+        "suit": "Hearts"
+      },
+      {
+        "uid": 4,
+        "rank": 14,
+        "suit": "Spades"
+      }
+    ],
+    "level": 5,
+    "expected": {
+      "kind": "Straight",
+      "size": 5,
+      "strength": 12,
+      "rank": 14,
+      "bomb": "None"
+    }
+  },
+  {
+    "cards": [
+      {
+        "uid": 0,
+        "rank": 9,
+        "suit": "Spades"
+      },
+      {
+        "uid": 1,
+        "rank": 9,
+        "suit": "Hearts"
+      },
+      {
+        "uid": 2,
+        "rank": 9,
+        "suit": "Diamonds"
+      },
+      {
+        "uid": 3,
+        "rank": 9,
+        "suit": "Clubs"
+      }
+    ],
+    "level": 5,
+    "expected": {
+      "kind": "Bomb",
+      "size": 4,
+      "strength": 1457,
+      "rank": 9,
+      "bomb": "Rank"
+    }
+  },
+  {
+    "cards": [
+      {
+        "uid": 0,
+        "rank": 9,
+        "suit": "Spades"
+      },
+      {
+        "uid": 1,
+        "rank": 9,
+        "suit": "Hearts"
+      },
+      {
+        "uid": 2,
+        "rank": 9,
+        "suit": "Diamonds"
+      },
+      {
+        "uid": 3,
+        "rank": 9,
+        "suit": "Clubs"
+      },
+      {
+        "uid": 4,
+        "rank": 9,
+        "suit": "Spades"
+      }
+    ],
+    "level": 5,
+    "expected": {
+      "kind": "Bomb",
+      "size": 5,
+      "strength": 1557,
+      "rank": 9,
+      "bomb": "Rank"
+    }
+  },
+  {
+    "cards": [
+      {
+        "uid": 0,
+        "rank": 3,
+        "suit": "Spades"
+      },
+      {
+        "uid": 1,
+        "rank": 4,
+        "suit": "Spades"
+      },
+      {
+        "uid": 2,
+        "rank": 5,
+        "suit": "Spades"
+      },
+      {
+        "uid": 3,
+        "rank": 6,
+        "suit": "Spades"
+      },
+      {
+        "uid": 4,
+        "rank": 7,
+        "suit": "Spades"
+      }
+    ],
+    "level": 5,
+    "expected": {
+      "kind": "Bomb",
+      "size": 5,
+      "strength": 1505,
+      "rank": 7,
+      "bomb": "StraightFlush"
+    }
+  },
+  {
+    "cards": [
+      {
+        "uid": 0,
+        "rank": 9,
+        "suit": "Spades"
+      },
+      {
+        "uid": 1,
+        "rank": 10,
+        "suit": "Spades"
+      },
+      {
+        "uid": 2,
+        "rank": 11,
+        "suit": "Spades"
+      },
+      {
+        "uid": 3,
+        "rank": 12,
+        "suit": "Spades"
+      },
+      {
+        "uid": 4,
+        "rank": 13,
+        "suit": "Spades"
+      }
+    ],
+    "level": 5,
+    "expected": {
+      "kind": "Bomb",
+      "size": 5,
+      "strength": 1511,
+      "rank": 13,
+      "bomb": "StraightFlush"
+    }
+  },
+  {
+    "cards": [
+      {
+        "uid": 0,
+        "rank": 15,
+        "suit": "Joker"
+      },
+      {
+        "uid": 1,
+        "rank": 15,
+        "suit": "Joker"
+      },
+      {
+        "uid": 2,
+        "rank": 16,
+        "suit": "Joker"
+      },
+      {
+        "uid": 3,
+        "rank": 16,
+        "suit": "Joker"
+      }
+    ],
+    "level": 5,
+    "expected": {
+      "kind": "Bomb",
+      "size": 4,
+      "strength": 100000,
+      "rank": 2,
+      "bomb": "Jokers"
+    }
+  },
+  {
+    "cards": [
+      {
+        "uid": 0,
+        "rank": 9,
+        "suit": "Spades"
+      }
+    ],
+    "level": 5,
+    "expected": {
+      "kind": "Single",
+      "size": 1,
+      "strength": 7,
+      "rank": 9,
+      "bomb": "None"
+    }
+  },
+  {
+    "cards": [
+      {
+        "uid": 0,
+        "rank": 3,
+        "suit": "Spades"
+      },
+      {
+        "uid": 1,
+        "rank": 3,
+        "suit": "Hearts"
+      },
+      {
+        "uid": 2,
+        "rank": 3,
+        "suit": "Diamonds"
+      },
+      {
+        "uid": 3,
+        "rank": 3,
+        "suit": "Clubs"
+      }
+    ],
+    "level": 5,
+    "expected": {
+      "kind": "Bomb",
+      "size": 4,
+      "strength": 1451,
+      "rank": 3,
+      "bomb": "Rank"
+    }
+  },
+  {
+    "cards": [
+      {
+        "uid": 0,
+        "rank": 14,
+        "suit": "Spades"
+      },
+      {
+        "uid": 1,
+        "rank": 14,
+        "suit": "Hearts"
+      }
+    ],
+    "level": 5,
+    "expected": {
+      "kind": "Pair",
+      "size": 2,
+      "strength": 12,
+      "rank": 14,
+      "bomb": "None"
+    }
+  },
+  {
+    "cards": [
+      {
+        "uid": 0,
+        "rank": 13,
+        "suit": "Spades"
+      },
+      {
+        "uid": 1,
+        "rank": 13,
+        "suit": "Hearts"
+      },
+      {
+        "uid": 2,
+        "rank": 13,
+        "suit": "Diamonds"
+      }
+    ],
+    "level": 5,
+    "expected": {
+      "kind": "Triple",
+      "size": 3,
+      "strength": 11,
+      "rank": 13,
+      "bomb": "None"
+    }
+  },
+  {
+    "cards": [
+      {
+        "uid": 0,
+        "rank": 9,
+        "suit": "Spades"
+      },
+      {
+        "uid": 1,
+        "rank": 9,
+        "suit": "Hearts"
+      }
+    ],
+    "level": 5,
+    "expected": {
+      "kind": "Pair",
+      "size": 2,
+      "strength": 7,
+      "rank": 9,
+      "bomb": "None"
+    }
+  },
+  {
+    "cards": [
+      {
+        "uid": 0,
+        "rank": 9,
+        "suit": "Spades"
+      },
+      {
+        "uid": 1,
+        "rank": 9,
+        "suit": "Hearts"
+      },
+      {
+        "uid": 2,
+        "rank": 9,
+        "suit": "Diamonds"
+      },
+      {
+        "uid": 3,
+        "rank": 10,
+        "suit": "Spades"
+      },
+      {
+        "uid": 4,
+        "rank": 10,
+        "suit": "Hearts"
+      },
+      {
+        "uid": 5,
+        "rank": 10,
+        "suit": "Diamonds"
+      },
+      {
+        "uid": 6,
+        "rank": 11,
+        "suit": "Spades"
+      },
+      {
+        "uid": 7,
+        "rank": 11,
+        "suit": "Hearts"
+      },
+      {
+        "uid": 8,
+        "rank": 11,
+        "suit": "Diamonds"
+      }
+    ],
+    "level": 5,
+    "expected": null
+  },
+  {
+    "cards": [
+      {
+        "uid": 0,
+        "rank": 6,
+        "suit": "Spades"
+      },
+      {
+        "uid": 1,
+        "rank": 6,
+        "suit": "Hearts"
+      },
+      {
+        "uid": 2,
+        "rank": 6,
+        "suit": "Diamonds"
+      },
+      {
+        "uid": 3,
+        "rank": 7,
+        "suit": "Spades"
+      },
+      {
+        "uid": 4,
+        "rank": 7,
+        "suit": "Hearts"
+      },
+      {
+        "uid": 5,
+        "rank": 7,
+        "suit": "Diamonds"
+      }
+    ],
+    "level": 5,
+    "expected": {
+      "kind": "Plane",
+      "size": 6,
+      "strength": 5,
+      "rank": 7,
+      "bomb": "None"
+    }
+  },
+  {
+    "cards": [
+      {
+        "uid": 0,
+        "rank": 6,
+        "suit": "Spades"
+      },
+      {
+        "uid": 1,
+        "rank": 6,
+        "suit": "Hearts"
+      },
+      {
+        "uid": 2,
+        "rank": 6,
+        "suit": "Diamonds"
+      },
+      {
+        "uid": 3,
+        "rank": 7,
+        "suit": "Spades"
+      },
+      {
+        "uid": 4,
+        "rank": 7,
+        "suit": "Hearts"
+      },
+      {
+        "uid": 5,
+        "rank": 5,
+        "suit": "Hearts"
+      }
+    ],
+    "level": 5,
+    "expected": {
+      "kind": "Plane",
+      "size": 6,
+      "strength": 5,
+      "rank": 7,
+      "bomb": "None"
+    }
+  },
+  {
+    "cards": [
+      {
+        "uid": 0,
+        "rank": 6,
+        "suit": "Spades"
+      },
+      {
+        "uid": 1,
+        "rank": 6,
+        "suit": "Hearts"
+      },
+      {
+        "uid": 2,
+        "rank": 6,
+        "suit": "Diamonds"
+      },
+      {
+        "uid": 3,
+        "rank": 7,
+        "suit": "Spades"
+      },
+      {
+        "uid": 4,
+        "rank": 7,
+        "suit": "Hearts"
+      },
+      {
+        "uid": 5,
+        "rank": 7,
+        "suit": "Diamonds"
+      }
+    ],
+    "level": 5,
+    "expected": {
+      "kind": "Plane",
+      "size": 6,
+      "strength": 5,
+      "rank": 7,
+      "bomb": "None"
+    }
+  },
+  {
+    "cards": [
+      {
+        "uid": 0,
+        "rank": 8,
+        "suit": "Spades"
+      },
+      {
+        "uid": 1,
+        "rank": 8,
+        "suit": "Hearts"
+      },
+      {
+        "uid": 2,
+        "rank": 8,
+        "suit": "Diamonds"
+      },
+      {
+        "uid": 3,
+        "rank": 9,
+        "suit": "Spades"
+      },
+      {
+        "uid": 4,
+        "rank": 9,
+        "suit": "Hearts"
+      },
+      {
+        "uid": 5,
+        "rank": 9,
+        "suit": "Diamonds"
+      }
+    ],
+    "level": 5,
+    "expected": {
+      "kind": "Plane",
+      "size": 6,
+      "strength": 7,
+      "rank": 9,
+      "bomb": "None"
+    }
+  },
+  {
+    "cards": [
+      {
+        "uid": 0,
+        "rank": 6,
+        "suit": "Spades"
+      },
+      {
+        "uid": 1,
+        "rank": 6,
+        "suit": "Hearts"
+      },
+      {
+        "uid": 2,
+        "rank": 6,
+        "suit": "Diamonds"
+      },
+      {
+        "uid": 3,
+        "rank": 9,
+        "suit": "Spades"
+      },
+      {
+        "uid": 4,
+        "rank": 9,
+        "suit": "Hearts"
+      },
+      {
+        "uid": 5,
+        "rank": 9,
+        "suit": "Diamonds"
+      }
+    ],
+    "level": 5,
+    "expected": null
+  },
+  {
+    "cards": [
+      {
+        "uid": 0,
+        "rank": 2,
+        "suit": "Spades"
+      }
+    ],
+    "level": 5,
+    "expected": {
+      "kind": "Single",
+      "size": 1,
+      "strength": 0,
+      "rank": 2,
+      "bomb": "None"
+    }
+  },
+  {
+    "cards": [
+      {
+        "uid": 0,
+        "rank": 3,
+        "suit": "Spades"
+      }
+    ],
+    "level": 5,
+    "expected": {
+      "kind": "Single",
+      "size": 1,
+      "strength": 1,
+      "rank": 3,
+      "bomb": "None"
+    }
+  },
+  {
+    "cards": [
+      {
+        "uid": 0,
+        "rank": 14,
+        "suit": "Spades"
+      }
+    ],
+    "level": 5,
+    "expected": {
+      "kind": "Single",
+      "size": 1,
+      "strength": 12,
+      "rank": 14,
+      "bomb": "None"
+    }
+  },
+  {
+    "cards": [
+      {
+        "uid": 0,
+        "rank": 2,
+        "suit": "Spades"
+      }
+    ],
+    "level": 5,
+    "expected": {
+      "kind": "Single",
+      "size": 1,
+      "strength": 0,
+      "rank": 2,
+      "bomb": "None"
+    }
+  },
+  {
+    "cards": [
+      {
+        "uid": 0,
+        "rank": 2,
+        "suit": "Spades"
+      }
+    ],
+    "level": 5,
+    "expected": {
+      "kind": "Single",
+      "size": 1,
+      "strength": 0,
+      "rank": 2,
+      "bomb": "None"
+    }
+  },
+  {
+    "cards": [
+      {
+        "uid": 0,
+        "rank": 14,
+        "suit": "Spades"
+      }
+    ],
+    "level": 5,
+    "expected": {
+      "kind": "Single",
+      "size": 1,
+      "strength": 12,
+      "rank": 14,
+      "bomb": "None"
+    }
+  },
+  {
+    "cards": [
+      {
+        "uid": 0,
+        "rank": 14,
+        "suit": "Spades"
+      },
+      {
+        "uid": 1,
+        "rank": 2,
+        "suit": "Diamonds"
+      },
+      {
+        "uid": 2,
+        "rank": 3,
+        "suit": "Clubs"
+      },
+      {
+        "uid": 3,
+        "rank": 4,
+        "suit": "Hearts"
+      },
+      {
+        "uid": 4,
+        "rank": 5,
+        "suit": "Spades"
+      }
+    ],
+    "level": 5,
+    "expected": {
+      "kind": "Straight",
+      "size": 5,
+      "strength": 3,
+      "rank": 5,
+      "bomb": "None"
+    }
+  },
+  {
+    "cards": [
+      {
+        "uid": 0,
+        "rank": 14,
+        "suit": "Spades"
+      },
+      {
+        "uid": 1,
+        "rank": 2,
+        "suit": "Diamonds"
+      },
+      {
+        "uid": 2,
+        "rank": 3,
+        "suit": "Clubs"
+      },
+      {
+        "uid": 3,
+        "rank": 4,
+        "suit": "Hearts"
+      },
+      {
+        "uid": 4,
+        "rank": 5,
+        "suit": "Spades"
+      }
+    ],
+    "level": 5,
+    "expected": {
+      "kind": "Straight",
+      "size": 5,
+      "strength": 3,
+      "rank": 5,
+      "bomb": "None"
+    }
+  },
+  {
+    "cards": [
+      {
+        "uid": 0,
+        "rank": 6,
+        "suit": "Spades"
+      },
+      {
+        "uid": 1,
+        "rank": 7,
+        "suit": "Diamonds"
+      },
+      {
+        "uid": 2,
+        "rank": 8,
+        "suit": "Clubs"
+      },
+      {
+        "uid": 3,
+        "rank": 9,
+        "suit": "Hearts"
+      },
+      {
+        "uid": 4,
+        "rank": 10,
+        "suit": "Spades"
+      }
+    ],
+    "level": 5,
+    "expected": {
+      "kind": "Straight",
+      "size": 5,
+      "strength": 8,
+      "rank": 10,
+      "bomb": "None"
+    }
+  },
+  {
+    "cards": [
+      {
+        "uid": 0,
+        "rank": 14,
+        "suit": "Spades"
+      },
+      {
+        "uid": 1,
+        "rank": 14,
+        "suit": "Hearts"
+      },
+      {
+        "uid": 2,
+        "rank": 2,
+        "suit": "Spades"
+      },
+      {
+        "uid": 3,
+        "rank": 2,
+        "suit": "Hearts"
+      },
+      {
+        "uid": 4,
+        "rank": 3,
+        "suit": "Spades"
+      },
+      {
+        "uid": 5,
+        "rank": 3,
+        "suit": "Hearts"
+      }
+    ],
+    "level": 5,
+    "expected": {
+      "kind": "Tractor",
+      "size": 6,
+      "strength": 1,
+      "rank": 3,
+      "bomb": "None"
+    }
+  },
+  {
+    "cards": [
+      {
+        "uid": 0,
+        "rank": 2,
+        "suit": "Clubs"
+      }
+    ],
+    "level": 2,
+    "expected": {
+      "kind": "Single",
+      "size": 1,
+      "strength": 13,
+      "rank": 2,
+      "bomb": "None"
+    }
+  },
+  {
+    "cards": [
+      {
+        "uid": 0,
+        "rank": 6,
+        "suit": "Spades"
+      }
+    ],
+    "level": 2,
+    "expected": {
+      "kind": "Single",
+      "size": 1,
+      "strength": 4,
+      "rank": 6,
+      "bomb": "None"
+    }
+  },
+  {
+    "cards": [
+      {
+        "uid": 0,
+        "rank": 14,
+        "suit": "Spades"
+      }
+    ],
+    "level": 2,
+    "expected": {
+      "kind": "Single",
+      "size": 1,
+      "strength": 12,
+      "rank": 14,
+      "bomb": "None"
+    }
+  },
+  {
+    "cards": [
+      {
+        "uid": 0,
+        "rank": 13,
+        "suit": "Spades"
+      },
+      {
+        "uid": 1,
+        "rank": 13,
+        "suit": "Hearts"
+      },
+      {
+        "uid": 2,
+        "rank": 13,
+        "suit": "Diamonds"
+      },
+      {
+        "uid": 3,
+        "rank": 2,
+        "suit": "Hearts"
+      }
+    ],
+    "level": 2,
+    "expected": {
+      "kind": "Bomb",
+      "size": 4,
+      "strength": 1461,
+      "rank": 13,
+      "bomb": "Rank"
+    }
+  },
+  {
+    "cards": [
+      {
+        "uid": 0,
+        "rank": 9,
+        "suit": "Spades"
+      },
+      {
+        "uid": 1,
+        "rank": 9,
+        "suit": "Diamonds"
+      },
+      {
+        "uid": 2,
+        "rank": 9,
+        "suit": "Clubs"
+      },
+      {
+        "uid": 3,
+        "rank": 9,
+        "suit": "Spades"
+      },
+      {
+        "uid": 4,
+        "rank": 9,
+        "suit": "Diamonds"
+      },
+      {
+        "uid": 5,
+        "rank": 9,
+        "suit": "Clubs"
+      },
+      {
+        "uid": 6,
+        "rank": 9,
+        "suit": "Spades"
+      },
+      {
+        "uid": 7,
+        "rank": 9,
+        "suit": "Diamonds"
+      },
+      {
+        "uid": 8,
+        "rank": 2,
+        "suit": "Hearts"
+      },
+      {
+        "uid": 9,
+        "rank": 2,
+        "suit": "Hearts"
+      }
+    ],
+    "level": 2,
+    "expected": {
+      "kind": "Bomb",
+      "size": 10,
+      "strength": 2057,
+      "rank": 9,
+      "bomb": "Rank"
+    }
+  },
+  {
+    "cards": [
+      {
+        "uid": 0,
+        "rank": 6,
+        "suit": "Spades"
+      },
+      {
+        "uid": 1,
+        "rank": 7,
+        "suit": "Diamonds"
+      },
+      {
+        "uid": 2,
+        "rank": 8,
+        "suit": "Clubs"
+      },
+      {
+        "uid": 3,
+        "rank": 9,
+        "suit": "Hearts"
+      },
+      {
+        "uid": 4,
+        "rank": 10,
+        "suit": "Spades"
+      },
+      {
+        "uid": 5,
+        "rank": 11,
+        "suit": "Diamonds"
+      }
+    ],
+    "level": 5,
+    "expected": null
+  },
+  {
+    "cards": [
+      {
+        "uid": 0,
+        "rank": 6,
+        "suit": "Spades"
+      },
+      {
+        "uid": 1,
+        "rank": 7,
+        "suit": "Spades"
+      },
+      {
+        "uid": 2,
+        "rank": 8,
+        "suit": "Spades"
+      },
+      {
+        "uid": 3,
+        "rank": 9,
+        "suit": "Spades"
+      },
+      {
+        "uid": 4,
+        "rank": 10,
+        "suit": "Spades"
+      },
+      {
+        "uid": 5,
+        "rank": 11,
+        "suit": "Spades"
+      }
+    ],
+    "level": 5,
+    "expected": null
+  },
+  {
+    "cards": [
+      {
+        "uid": 0,
+        "rank": 8,
+        "suit": "Spades"
+      },
+      {
+        "uid": 1,
+        "rank": 8,
+        "suit": "Hearts"
+      },
+      {
+        "uid": 2,
+        "rank": 8,
+        "suit": "Diamonds"
+      },
+      {
+        "uid": 3,
+        "rank": 13,
+        "suit": "Spades"
+      }
+    ],
+    "level": 5,
+    "expected": null
+  },
+  {
+    "cards": [
+      {
+        "uid": 0,
+        "rank": 8,
+        "suit": "Spades"
+      },
+      {
+        "uid": 1,
+        "rank": 8,
+        "suit": "Hearts"
+      },
+      {
+        "uid": 2,
+        "rank": 8,
+        "suit": "Diamonds"
+      },
+      {
+        "uid": 3,
+        "rank": 13,
+        "suit": "Spades"
+      },
+      {
+        "uid": 4,
+        "rank": 12,
+        "suit": "Diamonds"
+      }
+    ],
+    "level": 5,
+    "expected": null
+  },
+  {
+    "cards": [
+      {
+        "uid": 0,
+        "rank": 3,
+        "suit": "Spades"
+      },
+      {
+        "uid": 1,
+        "rank": 4,
+        "suit": "Diamonds"
+      },
+      {
+        "uid": 2,
+        "rank": 5,
+        "suit": "Clubs"
+      },
+      {
+        "uid": 3,
+        "rank": 6,
+        "suit": "Hearts"
+      },
+      {
+        "uid": 4,
+        "rank": 7,
+        "suit": "Spades"
+      },
+      {
+        "uid": 5,
+        "rank": 8,
+        "suit": "Diamonds"
+      },
+      {
+        "uid": 6,
+        "rank": 9,
+        "suit": "Clubs"
+      }
+    ],
+    "level": 5,
+    "expected": null
+  },
+  {
+    "cards": [
+      {
+        "uid": 0,
+        "rank": 3,
+        "suit": "Spades"
+      },
+      {
+        "uid": 1,
+        "rank": 4,
+        "suit": "Spades"
+      },
+      {
+        "uid": 2,
+        "rank": 5,
+        "suit": "Spades"
+      },
+      {
+        "uid": 3,
+        "rank": 6,
+        "suit": "Spades"
+      },
+      {
+        "uid": 4,
+        "rank": 7,
+        "suit": "Spades"
+      },
+      {
+        "uid": 5,
+        "rank": 8,
+        "suit": "Spades"
+      }
+    ],
+    "level": 5,
+    "expected": null
+  },
+  {
+    "cards": [
+      {
+        "uid": 0,
+        "rank": 6,
+        "suit": "Spades"
+      },
+      {
+        "uid": 1,
+        "rank": 6,
+        "suit": "Hearts"
+      },
+      {
+        "uid": 2,
+        "rank": 7,
+        "suit": "Spades"
+      },
+      {
+        "uid": 3,
+        "rank": 7,
+        "suit": "Hearts"
+      }
+    ],
+    "level": 5,
+    "expected": null
+  },
+  {
+    "cards": [
+      {
+        "uid": 0,
+        "rank": 6,
+        "suit": "Spades"
+      },
+      {
+        "uid": 1,
+        "rank": 6,
+        "suit": "Hearts"
+      },
+      {
+        "uid": 2,
+        "rank": 7,
+        "suit": "Spades"
+      },
+      {
+        "uid": 3,
+        "rank": 7,
+        "suit": "Hearts"
+      },
+      {
+        "uid": 4,
+        "rank": 8,
+        "suit": "Spades"
+      },
+      {
+        "uid": 5,
+        "rank": 8,
+        "suit": "Hearts"
+      },
+      {
+        "uid": 6,
+        "rank": 9,
+        "suit": "Spades"
+      },
+      {
+        "uid": 7,
+        "rank": 9,
+        "suit": "Hearts"
+      }
+    ],
+    "level": 5,
+    "expected": null
+  },
+  {
+    "cards": [
+      {
+        "uid": 0,
+        "rank": 6,
+        "suit": "Spades"
+      },
+      {
+        "uid": 1,
+        "rank": 6,
+        "suit": "Hearts"
+      },
+      {
+        "uid": 2,
+        "rank": 6,
+        "suit": "Diamonds"
+      },
+      {
+        "uid": 3,
+        "rank": 7,
+        "suit": "Spades"
+      },
+      {
+        "uid": 4,
+        "rank": 7,
+        "suit": "Hearts"
+      },
+      {
+        "uid": 5,
+        "rank": 7,
+        "suit": "Diamonds"
+      },
+      {
+        "uid": 6,
+        "rank": 8,
+        "suit": "Spades"
+      },
+      {
+        "uid": 7,
+        "rank": 8,
+        "suit": "Hearts"
+      },
+      {
+        "uid": 8,
+        "rank": 8,
+        "suit": "Diamonds"
+      }
+    ],
+    "level": 5,
+    "expected": null
+  },
+  {
+    "cards": [
+      {
+        "uid": 0,
+        "rank": 6,
+        "suit": "Spades"
+      },
+      {
+        "uid": 1,
+        "rank": 6,
+        "suit": "Hearts"
+      },
+      {
+        "uid": 2,
+        "rank": 7,
+        "suit": "Spades"
+      },
+      {
+        "uid": 3,
+        "rank": 7,
+        "suit": "Hearts"
+      },
+      {
+        "uid": 4,
+        "rank": 8,
+        "suit": "Spades"
+      },
+      {
+        "uid": 5,
+        "rank": 8,
+        "suit": "Hearts"
+      }
+    ],
+    "level": 5,
+    "expected": {
+      "kind": "Tractor",
+      "size": 6,
+      "strength": 6,
+      "rank": 8,
+      "bomb": "None"
+    }
+  },
+  {
+    "cards": [
+      {
+        "uid": 0,
+        "rank": 6,
+        "suit": "Spades"
+      },
+      {
+        "uid": 1,
+        "rank": 6,
+        "suit": "Hearts"
+      },
+      {
+        "uid": 2,
+        "rank": 6,
+        "suit": "Diamonds"
+      },
+      {
+        "uid": 3,
+        "rank": 7,
+        "suit": "Spades"
+      },
+      {
+        "uid": 4,
+        "rank": 7,
+        "suit": "Hearts"
+      },
+      {
+        "uid": 5,
+        "rank": 7,
+        "suit": "Diamonds"
+      }
+    ],
+    "level": 5,
+    "expected": {
+      "kind": "Plane",
+      "size": 6,
+      "strength": 5,
+      "rank": 7,
+      "bomb": "None"
+    }
+  },
+  {
+    "cards": [
+      {
+        "uid": 0,
+        "rank": 3,
+        "suit": "Spades"
+      },
+      {
+        "uid": 1,
+        "rank": 4,
+        "suit": "Diamonds"
+      },
+      {
+        "uid": 2,
+        "rank": 5,
+        "suit": "Clubs"
+      },
+      {
+        "uid": 3,
+        "rank": 6,
+        "suit": "Hearts"
+      },
+      {
+        "uid": 4,
+        "rank": 7,
+        "suit": "Spades"
+      }
+    ],
+    "level": 5,
+    "expected": {
+      "kind": "Straight",
+      "size": 5,
+      "strength": 5,
+      "rank": 7,
+      "bomb": "None"
+    }
+  },
+  {
+    "cards": [
+      {
+        "uid": 0,
+        "rank": 9,
+        "suit": "Spades"
+      },
+      {
+        "uid": 1,
+        "rank": 10,
+        "suit": "Spades"
+      },
+      {
+        "uid": 2,
+        "rank": 11,
+        "suit": "Spades"
+      },
+      {
+        "uid": 3,
+        "rank": 12,
+        "suit": "Spades"
+      },
+      {
+        "uid": 4,
+        "rank": 13,
+        "suit": "Spades"
+      }
+    ],
+    "level": 5,
+    "expected": {
+      "kind": "Bomb",
+      "size": 5,
+      "strength": 1511,
+      "rank": 13,
+      "bomb": "StraightFlush"
+    }
+  },
+  {
+    "cards": [
+      {
+        "uid": 0,
+        "rank": 8,
+        "suit": "Spades"
+      },
+      {
+        "uid": 1,
+        "rank": 9,
+        "suit": "Spades"
+      },
+      {
+        "uid": 2,
+        "rank": 10,
+        "suit": "Spades"
+      },
+      {
+        "uid": 3,
+        "rank": 4,
+        "suit": "Hearts"
+      },
+      {
+        "uid": 4,
+        "rank": 4,
+        "suit": "Hearts"
+      }
+    ],
+    "level": 4,
+    "expected": {
+      "kind": "Bomb",
+      "size": 5,
+      "strength": 1510,
+      "rank": 12,
+      "bomb": "StraightFlush"
+    }
+  },
+  {
+    "cards": [
+      {
+        "uid": 0,
+        "rank": 8,
+        "suit": "Spades"
+      },
+      {
+        "uid": 1,
+        "rank": 9,
+        "suit": "Diamonds"
+      },
+      {
+        "uid": 2,
+        "rank": 10,
+        "suit": "Clubs"
+      },
+      {
+        "uid": 3,
+        "rank": 4,
+        "suit": "Hearts"
+      },
+      {
+        "uid": 4,
+        "rank": 4,
+        "suit": "Hearts"
+      }
+    ],
+    "level": 4,
+    "expected": {
+      "kind": "Straight",
+      "size": 5,
+      "strength": 10,
+      "rank": 12,
+      "bomb": "None"
+    }
+  },
+  {
+    "cards": [
+      {
+        "uid": 0,
+        "rank": 6,
+        "suit": "Spades"
+      },
+      {
+        "uid": 1,
+        "rank": 6,
+        "suit": "Hearts"
+      },
+      {
+        "uid": 2,
+        "rank": 8,
+        "suit": "Spades"
+      },
+      {
+        "uid": 3,
+        "rank": 8,
+        "suit": "Diamonds"
+      },
+      {
+        "uid": 4,
+        "rank": 4,
+        "suit": "Hearts"
+      },
+      {
+        "uid": 5,
+        "rank": 4,
+        "suit": "Hearts"
+      }
+    ],
+    "level": 4,
+    "expected": {
+      "kind": "Tractor",
+      "size": 6,
+      "strength": 6,
+      "rank": 8,
+      "bomb": "None"
+    }
+  },
+  {
+    "cards": [
+      {
+        "uid": 0,
+        "rank": 15,
+        "suit": "Joker"
+      },
+      {
+        "uid": 1,
+        "rank": 15,
+        "suit": "Joker"
+      }
+    ],
+    "level": 5,
+    "expected": {
+      "kind": "Pair",
+      "size": 2,
+      "strength": 14,
+      "rank": 15,
+      "bomb": "None"
+    }
+  },
+  {
+    "cards": [
+      {
+        "uid": 0,
+        "rank": 16,
+        "suit": "Joker"
+      },
+      {
+        "uid": 1,
+        "rank": 16,
+        "suit": "Joker"
+      }
+    ],
+    "level": 5,
+    "expected": {
+      "kind": "Pair",
+      "size": 2,
+      "strength": 15,
+      "rank": 16,
+      "bomb": "None"
+    }
+  },
+  {
+    "cards": [
+      {
+        "uid": 0,
+        "rank": 15,
+        "suit": "Joker"
+      },
+      {
+        "uid": 1,
+        "rank": 16,
+        "suit": "Joker"
+      }
+    ],
+    "level": 5,
+    "expected": null
+  },
+  {
+    "cards": [
+      {
+        "uid": 0,
+        "rank": 15,
+        "suit": "Joker"
+      },
+      {
+        "uid": 1,
+        "rank": 15,
+        "suit": "Joker"
+      }
+    ],
+    "level": 5,
+    "expected": {
+      "kind": "Pair",
+      "size": 2,
+      "strength": 14,
+      "rank": 15,
+      "bomb": "None"
+    }
+  },
+  {
+    "cards": [
+      {
+        "uid": 0,
+        "rank": 16,
+        "suit": "Joker"
+      },
+      {
+        "uid": 1,
+        "rank": 16,
+        "suit": "Joker"
+      }
+    ],
+    "level": 5,
+    "expected": {
+      "kind": "Pair",
+      "size": 2,
+      "strength": 15,
+      "rank": 16,
+      "bomb": "None"
+    }
+  },
+  {
+    "cards": [
+      {
+        "uid": 0,
+        "rank": 14,
+        "suit": "Spades"
+      },
+      {
+        "uid": 1,
+        "rank": 14,
+        "suit": "Hearts"
+      }
+    ],
+    "level": 5,
+    "expected": {
+      "kind": "Pair",
+      "size": 2,
+      "strength": 12,
+      "rank": 14,
+      "bomb": "None"
+    }
+  }
+]

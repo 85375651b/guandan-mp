@@ -1,0 +1,60 @@
+THE TABLE
+Four seats, two teams. You and the player opposite you are partners. Two decks
+are used: 108 cards, 27 per player. Empty seats are bots. Play waits for the
+first human; when everyone leaves, the next arrival starts a fresh game.
+
+CARDS AND COMBINATIONS
+Ordinary cards run 2, 3, …, 10, J, Q, K, A. All suits of the current level
+rank above Ace; small joker and big joker rank above them. The two hearts of
+the current level are wildcards. Wildcards cannot replace either joker.
+
+Play a single, pair (including two matching jokers), triple, triple plus pair,
+five-card straight, three consecutive pairs, or two consecutive triples.
+Straights and straight flushes are exactly five cards. A may be low or high;
+K-A-2 wrapping is not allowed. Level cards use their printed rank in runs.
+Bombs are four or more matching ranks, five-card straight flushes, or all four
+jokers. Bombs beat ordinary plays; four jokers beat everything.
+
+SELECTING CARDS
+Click cards in your hand, then Play selected. The selected combination is
+previewed beside the controls. Pass is available when following a play.
+Rank and suit appear on each card's left edge, visible when cards overlap.
+Scroll the hand sideways if it does not fit the window.
+Your cards appear in front of you; other plays appear in front of their owners.
+A gold outline marks the current winning play. The play log has a Close button;
+Escape closes the log and rules windows.
+
+FINISHING AND ACE
+A team finishing first and second ends the hand immediately. Otherwise, the
+hand ends after three finishers. The team with first place advances three
+levels for 1–2, two for 1–3, or one for 1–4, stopping at Ace.
+Win 1–2 or 1–3 while playing your own Ace level to win the game. Three
+consecutive 1–4 wins at your own Ace reset your team to 2. A loss breaks the
+streak. When a finished player wins a trick, their partner receives the lead.
+
+TRIBUTE, RETURN, AND REBELLION
+After the next deal, a 1–2 win makes both losers give their largest non-wild
+card. First place receives the higher offer, second place the lower. Equal
+offers may be assigned either way. For a 1–3 or 1–4 win, last place gives to
+first place. The new hand's level determines strength. Wildcards are exempt.
+
+Each recipient returns ONE non-trump 2–9 to the exact person who gave them
+tribute. All suits of the level are trumps above Ace, so a 7 cannot be a normal
+return while playing 7. If no eligible 2–9 exists, only the lowest non-wild
+card may be returned. Highlighted cards are eligible. Choose one and click
+Return selected card. Both returns are revealed together. Bots choose their
+returns automatically. Normal play waits until the exchange is complete.
+
+Both big jokers among the two double-tribute donors cause rebellion. In a
+single tribute, last place must hold both. Rebellion skips the exchange and
+the previous first-place player leads. Otherwise the largest-card giver
+leads; ties go to the giver whose card went to first place.
+
+MULTIPLAYER
+The host and guests run the same desktop application. Connect Tailscale on
+each computer. The host selects Host game and shares its invitation. Guests
+select Join game and enter that address. Allow the selected TCP port (3000
+by default) in the host firewall and tailnet access rules. Keep the host
+application running. Closing the host closes the table for everyone.
+Disconnecting a guest gives their seat to a bot. Rejoining takes an open
+seat and may not restore the old seat. A disconnected guest can click Reconnect.

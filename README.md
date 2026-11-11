@@ -1,116 +1,215 @@
-# Guandan Table (掼蛋)
+# Guandan Native
 
-Guandan for solo, LAN, and Tailscale multiplayer. The game runs on your machine.
-You and up to 3 friends on your tailnet can join from a browser, even on different
-WiFi networks. Empty seats are played by AI, so it also works solo. Solo and LAN
-play work offline; remote tailnet play needs network connectivity and Tailscale.
+A Rust desktop application for Linux: a native window, a Rust rules engine,
+three local bots, and multiplayer over Tailscale or a LAN. The application
+does not use Node.js, a browser, a webview, HTML, or a JavaScript runtime.
 
-## Setup (one-time, on Fedora)
+## Build and run
 
-You need Node.js. If you don't have it:
+See [DEPENDENCIES.md](DEPENDENCIES.md) for the complete setup checklist, Fedora
+package names, toolchain details, and the full Cargo dependency inventory.
 
-```
-sudo dnf install nodejs
-```
-
-Then, inside this folder:
-
-```
-npm install
-```
-
-## Run it
-
-In `server.js`, replace `XXX.XXX.XXX.XXX` in this line with **the hosting
-computer's Tailscale IPv4 address**, keeping the quotes:
-
-```js
-const TAILSCALE_IP = process.env.TAILSCALE_IP || 'XXX.XXX.XXX.XXX';
-```
-
-You can find that address by running `tailscale ip -4` on the hosting computer.
-Use just the IP address here; the server adds `http://` and the port automatically.
-Then start the game:
-
-```
-npm start
-```
-
-Alternatively, leave `server.js` unchanged and supply the address when starting:
+Use a current stable Rust toolchain. This project is built and tested with
+Rust 1.99.1. On Fedora, install the C build tools if needed:
 
 ```sh
-TAILSCALE_IP=XXX.XXX.XXX.XXX npm start
+sudo dnf install gcc pkgconf-pkg-config
+cargo build --release --locked --bin guandan
+./target/release/guandan
 ```
 
-Replace the placeholder in that command with your actual Tailscale IPv4 address.
-An environment variable takes precedence over the value in `server.js`.
+Or run directly with `cargo run --release --locked`. Cargo downloads the Rust
+dependencies on the first build. Subsequent solo play requires no internet.
 
-You'll see something like:
+The output is a Linux ELF executable. Rules, interface code, instructions, and
+fonts are compiled into it; no `public/` directory or Node installation is
+needed beside the executable. It uses the normal Linux desktop libraries and
+OpenGL driver, rather than being a statically linked, universal Linux binary.
+Both Wayland and X11 backends are enabled. If a desktop/driver has a Wayland
+problem, try X11 with `env -u WAYLAND_DISPLAY ./target/release/guandan`.
 
+## Solo
+
+Enter your name and choose **Start solo game**. An internal host listens only
+on loopback, on an available port. You receive a fresh hand with three bots.
+
+Click cards to select them, then **Play selected**, or **Pass** when following.
+The selected combination is previewed beside the controls. Played cards sit in
+front of their owners; a gold outline marks the current winning play. The log
+has a Close button, and Escape closes the log and rules windows.
+
+The interface adapts to window size, down to 420×340 logical pixels. Buttons
+wrap, cards shrink to fit the hand, and the lobby stacks into one column in
+narrow windows. Scroll the lobby to reach additional controls in short windows.
+Long instructions scroll separately from the action buttons. The play log opens
+as a floating window on smaller screens so it does not squeeze the hand. In very
+short windows, the table can also scroll independently of the hand and controls.
+
+## Play with friends on your tailnet
+
+1. Everyone starts Tailscale and runs the same version of this desktop app.
+2. The host chooses **Host game**. The default TCP port is **3000**.
+3. Set **Your Tailscale IP** to the hosting computer's Tailscale IPv4 address.
+   The app tries to detect it locally; **Detect Tailscale IP** retries. You can
+   also find it with `tailscale ip -4` and type it into that field.
+4. Copy the **On your tailnet** invitation from the table header. It looks like
+   `guandan://XXX.XXX.XXX.XXX:3000`, using the real IP you entered.
+5. Guests paste that invitation into **Host address** under **Join friends**.
+   A plain `XXX.XXX.XXX.XXX:3000` or MagicDNS hostname also works. Replace the
+   placeholder with the host's real Tailscale IP; there is no source edit needed.
+
+These are invitations to paste into the desktop app, not browser links. Each
+guest needs a native build on their machine. This source and verification target
+Linux; the old browser client cannot join the native TCP protocol.
+
+Allow the selected TCP port through the host's firewall and tailnet access rules.
+No router port forwarding, Tailscale Serve, or Funnel setup is needed. Keep the
+host application running: **Close table** shuts down the host and disconnects
+everyone. Hosting listens on all IPv4 interfaces, so the same port can also be
+used with the host's LAN IP. The advertised Tailscale address does not restrict
+which interfaces can connect. Tailscale supplies the encrypted private transport;
+the game itself does not implement a separate account or encryption system.
+
+Empty seats are bots. A joining friend takes an open bot seat without restarting
+the hand. A disconnected guest's seat becomes a bot while others remain. Use
+**Reconnect** after a connection failure; you take an open seat and may not get
+your original seat back. When everyone leaves, play stops; the next arrival
+starts a fresh game. Bots cannot play a newly occupied human seat.
+
+The app saves your name, invitation address, port, and host IP in
+`$XDG_CONFIG_HOME/guandan/settings.json`, or `~/.config/guandan/settings.json`.
+No game or hand history is persisted across host restarts.
+
+## Rules carried over
+
+- Two decks, 27 cards per player; seats 1 and 3 partner, as do seats 2 and 4.
+- Hearts of the current level are wildcards, but cannot replace either joker.
+  Pairs of matching small or big jokers are legal.
+- All level-card suits rank above Ace. A level 7, including a non-heart 7,
+  is excluded from ordinary 2–9 tribute returns.
+- A 1–2 victory ends the hand immediately. Levels advance +3 for 1–2, +2 for
+  1–3, and +1 for 1–4, stopping at Ace. A 1–2 or 1–3 win while playing your own
+  Ace wins the game. Three consecutive 1–4 wins at your own Ace reset that team
+  to 2; an intervening loss breaks the streak.
+- The next deal includes single/double tribute, correct reciprocal returns,
+  wildcard exemption, both-big-joker rebellion, and the corresponding leader.
+  Human recipients choose a highlighted non-trump 2–9. If none exists, only
+  their lowest non-wild card may be returned. Returns are revealed together.
+- A finished player's unanswered winning play gives the lead to their partner.
+
+The in-app **Rules** window and [RULES.txt](RULES.txt) explain the full table
+conventions.
+
+## Bots
+
+All empty seats use the level 3 heuristic policy, entirely offline. No additional
+dependencies, model downloads, or services are required.
+
+- Plan the hand as a small number of legal plays, considering full houses, runs,
+  bombs, wildcard substitutions, and alternative suits/copies of the same rank.
+  Prefer combinations that leave a useful hand over simply playing the most cards.
+- Preserve bombs and wildcards; spend a bomb to stop a possible opponent finish,
+  finish immediately, or leave just one play. Lead low and use stronger responses
+  when securing the lead helps the team.
+- Use public hand sizes to help a nearly finished partner, let a partner's winning
+  play stand, and avoid giving an opponent with one card an easy single.
+- Count played cards by physical copy, rank, and suit, including jokers and
+  wildcards. Remember revealed tribute/return cards until their owners play them.
+  The action history survives trick cleanup and resets on each new deal.
+- Treat passes against opponents as uncertain evidence about available responses.
+  Ignore passes over a partner, weaken old evidence, and discard an inference
+  contradicted by a later play. A pass never proves that a response is impossible.
+- Estimate whether a play will retain control or allow an opponent to finish.
+  Use exhausted high cards to conserve jokers, secure a route out in two plays,
+  and stop a nearly finished opponent from regaining the lead, including by relay.
+
+Hand planning uses memoization and a fixed work budget to keep turns responsive.
+It seeks fewer plays but does not guarantee a globally optimal partition for every
+27-card hand. The bot receives only its own hand, public counts, and public
+actions. Return choices enter that history only when the exchange is revealed.
+Individual card-count odds use exact finite-deck arithmetic; combination
+probabilities and pass weights are heuristic estimates. There are no
+sampled opponent hands or game rollouts; those belong to the future level 4 policy.
+
+Repeatable comparisons use identical seeded deals twice, swapping policies
+between teams, across levels 2 through Ace. Level 2 won **151/200 hands (75.5%)**
+against the original policy. Level 3 won **518/1,000 hands (51.8%)** against level
+2, across seeds 0–499. Its slowest decision in those release-build runs was about
+23 ms. The measured gain over level 2 is modest; strength and timing vary by deal
+and machine. The earlier policies remain available for reproducible comparisons:
+
+```sh
+cargo test --release --locked --no-default-features --test bots compare_against_baseline -- --ignored --nocapture
+GUANDAN_BENCHMARK_DEALS=500 cargo test --release --locked --no-default-features --test bots compare_tracking_against_level_two -- --ignored --nocapture
 ```
-Guandan table running.
-  On this machine: http://localhost:3000
-  On your tailnet: http://XXX.XXX.XXX.XXX:3000
 
-Share the "on your tailnet" link with friends connected to your tailnet.
-Keep this computer and Tailscale running while you play.
+The tracking comparison defaults to 100 deals (200 hands). Set
+`GUANDAN_BENCHMARK_START` to select another starting seed.
+
+## Verification
+
+```sh
+cargo test --locked
+cargo clippy --all-targets --all-features --locked -- -D warnings
+cargo fmt --all --check
 ```
 
-- Open the `localhost` link yourself.
-- Make sure the host and your friends' devices are connected to Tailscale and
-  that your tailnet access rules allow them to reach the host on TCP port 3000
-  (or your configured `PORT`). The host firewall must also allow that connection.
-- Send the `on your tailnet` link to friends — they open it in any browser
-  (phone or computer) and pick a name to sit down. They can be on different WiFi
-  networks. No game installation is needed on their devices.
-- Play waits until the first player clicks **Sit Down**, then starts a fresh game.
-- Empty seats play themselves (AI), so you can start solo and have friends
-  join mid-session — they'll fill open seats.
+Tests include legacy combination fixtures, rules/tribute/Ace regressions,
+30 seeded full-game simulations with card-conservation checks, bot tactical
+regressions, small-hand planning checked against an exhaustive solver, complete
+games using the new bots through scoring/tribute, card counting and cautious
+pass inference, exhaustive checks of small endgames at every level, public-history
+reset/reveal behavior, seat ownership and privacy,
+and a real TCP test where four native clients finish a hand, exchange tribute,
+resume play, and detect host shutdown.
 
-Seats 0 & 2 are Team A, seats 1 & 3 are Team B. Press Ctrl+C in the terminal
-to shut the table down.
+The engine and networking can also be tested without graphical dependencies:
 
-## Notes / limitations
+```sh
+cargo test --no-default-features --locked
+```
 
-- The tailnet link works for devices with Tailscale connectivity and permission
-  to access the host. The server uses ordinary HTTP and WebSockets over the
-  Tailscale connection; no Tailscale Serve or Funnel setup is needed.
-- For solo play, use `http://localhost:3000`. For friends on your LAN without
-  Tailscale, use the host's LAN IP with the same port. The server listens on all
-  IPv4 interfaces; setting `TAILSCALE_IP` changes the advertised link, not access
-  permissions or which interfaces accept connections.
-- If someone's browser tab closes while others remain seated, AI takes over
-  their seat; rejoining takes whatever seat is open (not necessarily their old one).
-- When everyone leaves, play stops. The next player to sit down starts a fresh game.
-- Hearts of the current level are wild, but cannot replace either joker.
-- Levels stop at Ace. A 1–2 or 1–3 victory while playing your own Ace level wins
-  the game. Three consecutive 1–4 wins at your own Ace level reset your team to 2;
-  an intervening loss breaks the streak.
+For interface previews, `cargo run --locked -- --demo` opens a static native
+table. Optional screenshot verification uses:
 
-## Tribute between hands
+```sh
+cargo build --features screenshot --locked --bin guandan
+EFRAME_SCREENSHOT_TO=/tmp/guandan.png ./target/debug/guandan --demo
+```
 
-After the next deal, a 1–2 victory requires each loser to give their largest
-non-wild card: first place receives the higher card and second place the lower
-(ties can be assigned either way). After a 1–3 or 1–4 victory, last place gives
-their largest non-wild card to first place. Card strength uses the new hand's
-level; heart wildcards are exempt, including when all other cards are lower.
+For a compact screenshot, also set `GUANDAN_SCREENSHOT_SIZE=420x340` (available
+only when building with the `screenshot` feature).
 
-Each recipient returns one non-trump 2–9 card to the exact player who gave them
-tribute (two return cards total for a double tribute). Humans select a highlighted
-card in their hand and click **Return Selected Card**; bots choose automatically.
-All suits of the current level rank are trumps above Ace and are excluded from
-the normal 2–9 return range. If there is no eligible 2–9, only a lowest non-wild
-card may be returned. Returns are revealed together, and normal play waits until
-the exchange is complete.
+## Source layout
 
-If both big jokers are held by the two losers in a double tribute, or by last
-place in a single tribute, they rebel: the exchange is skipped and the previous
-first-place player leads. Without rebellion, the largest-card giver leads; if
-the tribute cards tie, the giver whose card went to first place leads.
+- `src/cards.rs`, `src/rules.rs`: cards, combination validation, basic move generation.
+- `src/bot.rs`: hand planning, partnership/bomb heuristics, and endgame choices.
+- `src/bot/knowledge.rs`: public card counts, pass evidence, and response estimates.
+- `src/game.rs`: scoring, turns, tribute, rebellion, and Ace progression.
+- `src/table.rs`: authoritative seats, bot timers, per-client public/private views.
+- `src/net.rs`: background TCP hosting/client connections and versioned protocol.
+- `src/app.rs`, `src/main.rs`: the native graphical application.
+- `tests/`: game, migration parity, and real network tests.
+- `legacy/`: the previous web application, preserved for reference. It is not
+  compiled or launched by Cargo. Its Node tests remain runnable there.
 
-## Files
+An optional headless host is included:
 
-- `server.js` — the game server (Node + WebSocket)
-- `rules.js` — the Guandan rules engine and AI (shared logic, unit-tested)
-- `public/index.html` — the browser client
-- `test.js`, `test-nuances.js`, `test-server.js`, `simulate.js` — automated correctness checks (`npm test`)
+```sh
+cargo run --release --no-default-features --locked --bin guandan-server -- 0.0.0.0:3000
+```
+
+Guests still join it using the desktop app. The normal **Host game** button
+already runs the same server internally; a separate server process is optional.
+
+## Optional desktop launcher
+
+To add the game to your Linux application menu after compiling:
+
+```sh
+install -Dm755 target/release/guandan ~/.local/bin/guandan
+install -Dm644 packaging/guandan.desktop ~/.local/share/applications/guandan.desktop
+```
+
+The launcher expects `guandan` on your session's `PATH`. If `~/.local/bin` is
+not on it, set the launcher's `Exec` entry to the executable's absolute path.
