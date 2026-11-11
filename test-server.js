@@ -19,8 +19,7 @@ function createTable(leader = 0){
   const context = vm.createContext({
     __dirname, process: { env: {} }, console: { log(){} },
     require(name){
-      if (name === 'http') return { createServer: () => ({ listen: (_port, cb) => cb() }) };
-      if (name === 'os') return { networkInterfaces: () => ({}) };
+      if (name === 'http') return { createServer: () => ({ listen: (_port, _host, cb) => cb() }) };
       if (name === 'ws') return { WebSocketServer };
       if (name === './rules.js') return { ...rules, Game };
       return require(name);
@@ -178,11 +177,141 @@ test('the last human leaving cancels an automatic next-hand deal', () => {
 
 test('an automatic next hand still starts while a human remains seated', () => {
   const table = createTable();
-  table.connect('Host');
+  const host = table.connect('Host');
   const game = table.game();
   game.endHand();
   const friend = table.connect('Friend');
   table.advance(4000);
   assert.equal(game.handOver, false);
+  if (game.tributePending()){
+    const options = game.tributeReturnOptions(0);
+    assert.ok(options.length > 0);
+    host.act({ type:'returnTribute', uid:options[0].uid });
+  }
   assert.deepEqual(friend.state().handCounts, [27,27,27,27]);
+});
+
+function prepareDoubleTribute(game){
+  const deck = rules.buildDeck();
+  game.hands = [deck.filter(c => c.joker === 'big'), [], [], []];
+  for (const card of deck.filter(c => c.joker !== 'big')){
+    game.hands.find(h => h.length < 27).push(card);
+  }
+  game.beginTribute({ finishedOrder:[0,2,1,3] });
+  assert.equal(game.tributePending(), true);
+}
+
+test('human return choices use the socket seat, stay secret until both choose, and block normal play', () => {
+  const table = createTable();
+  const players = ['Host','Opponent','Partner','Other'].map(name => table.connect(name));
+  const game = table.game();
+  prepareDoubleTribute(game);
+  players[0].act({ type:'join', name:'Host' });
+  assert.equal(players[0].state().tribute.phase, 'return');
+  assert.ok(players[0].state().tributeReturnUids.length > 0);
+  assert.deepEqual(players[1].state().tributeReturnUids, []);
+  const before = game.hands.map(h => h.length);
+  players[0].act({ type:'play', uids:[players[0].state().yourHand[0].uid] });
+  players[0].act({ type:'pass' });
+  assert.deepEqual(game.hands.map(h => h.length), before);
+  assert.equal(game.currentTrick, null);
+  const selected = players[0].state().tributeReturnUids[0];
+  players[1].act({ type:'returnTribute', uid:selected, seat:0 });
+  assert.equal(players[1].state().error, 'not-awaiting-your-return');
+  players[0].act({ type:'returnTribute', uid:999 });
+  assert.equal(players[0].state().error, 'invalid-tribute-return');
+  players[0].act({ type:'returnTribute', uid:selected });
+  assert.equal(players[0].state().tributeReturnUids.length, 0);
+  assert.equal(players[1].state().tribute.exchanges.find(e => e.to === 0).returned, true);
+  assert.ok(players[1].state().tribute.exchanges.every(e => e.returnCard === null));
+  assert.equal(players[1].state().log.some(line => /returns/.test(line)), false);
+  players[0].act({ type:'returnTribute', uid:selected });
+  assert.equal(players[0].state().error, 'not-awaiting-your-return');
+  players[2].act({ type:'returnTribute', uid:players[2].state().tributeReturnUids[0] });
+  assert.equal(game.tributePending(), false);
+  assert.deepEqual(players[1].state().handCounts, [27,27,27,27]);
+  assert.ok(players[1].state().tribute.exchanges.every(e => e.returnCard));
+  assert.equal(new Set(game.hands.flat().map(c => c.uid)).size, 108);
+  assert.equal(game.turn, game.tribute.exchanges[0].from);
+});
+
+test('bots choose returns automatically and wait for the human return', () => {
+  const table = createTable();
+  const host = table.connect('Host');
+  const game = table.game();
+  prepareDoubleTribute(game);
+  table.connect('Opponent'); // Reschedule after setting up the next hand.
+  table.advance(900);
+  assert.equal(game.tribute.exchanges.find(e => e.to === 2).returnCard !== null, true);
+  assert.equal(game.tributePending(), true);
+  assert.equal(game.turn, null);
+  host.act({ type:'returnTribute', uid:host.state().tributeReturnUids[0] });
+  assert.equal(game.tributePending(), false);
+  assert.deepEqual(host.state().handCounts, [27,27,27,27]);
+});
+
+test('a human taking a pending bot return chooses their own card', () => {
+  const table = createTable();
+  table.connect('Host');
+  const game = table.game();
+  prepareDoubleTribute(game);
+  table.connect('Opponent');
+  table.advance(450);
+  const partner = table.connect('Partner');
+  table.advance(60000);
+  assert.equal(game.tribute.exchanges.find(e => e.to === 2).returnCard, null);
+  assert.ok(partner.state().tributeReturnUids.length > 0);
+  partner.act({ type:'returnTribute', uid:partner.state().tributeReturnUids[0] });
+  assert.equal(game.tribute.exchanges.find(e => e.to === 2).returnCard !== null, true);
+});
+
+test('disconnecting during a return lets AI finish while another human remains', () => {
+  const table = createTable();
+  const host = table.connect('Host');
+  const game = table.game();
+  prepareDoubleTribute(game);
+  const opponent = table.connect('Opponent');
+  host.close();
+  table.advance(1800);
+  assert.equal(game.tributePending(), false);
+  assert.deepEqual(opponent.state().handCounts, [27,27,27,27]);
+});
+
+test('an empty table cancels pending tribute work and a new arrival gets a fresh game', () => {
+  const table = createTable();
+  const host = table.connect('Host');
+  const game = table.game();
+  prepareDoubleTribute(game);
+  const opponent = table.connect('Opponent');
+  host.close();
+  opponent.close();
+  table.advance(60000);
+  assert.ok(game.tribute.exchanges.every(e => !e.returnCard));
+  const returning = table.connect('Returning');
+  assertFresh(returning.state());
+  assert.equal(returning.state().tribute, null);
+});
+
+test('level 7 trumps are neither advertised as return options nor accepted over the socket', () => {
+  const table = createTable();
+  const host = table.connect('Host');
+  const game = table.game();
+  game.teamLevel[0] = rules.LEVEL_ORDER.indexOf('7');
+  game.startHand(0);
+  prepareDoubleTribute(game);
+  table.connect('Opponent');
+  const state = host.state();
+  const trumps = state.yourHand.filter(c => c.rank === '7');
+  assert.ok(trumps.some(c => c.suit !== 'H'));
+  for (const card of trumps){
+    assert.equal(state.tributeReturnUids.includes(card.uid), false);
+    host.act({ type:'returnTribute', uid:card.uid });
+    assert.equal(host.state().error, 'invalid-tribute-return');
+  }
+  assert.equal(game.tribute.exchanges.find(e => e.to === 0).returnCard, null);
+  table.advance(900);
+  assert.notEqual(game.tribute.exchanges.find(e => e.to === 2).returnCard.rank, '7');
+  host.act({ type:'returnTribute', uid:host.state().tributeReturnUids[0] });
+  assert.equal(game.tributePending(), false);
+  assert.deepEqual(host.state().handCounts, [27,27,27,27]);
 });

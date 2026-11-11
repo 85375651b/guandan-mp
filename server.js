@@ -1,11 +1,13 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-const os = require('os');
 const { WebSocketServer } = require('ws');
 const { Game, aiChooseLead, aiChooseFollow, cardLabel } = require('./rules.js');
 
 const PORT = process.env.PORT || 3000;
+// Replace the placeholder below with this computer's Tailscale IPv4 address.
+// Alternatively, set the TAILSCALE_IP environment variable when starting the server.
+const TAILSCALE_IP = process.env.TAILSCALE_IP || '100.109.134.112';
 const PUBLIC_DIR = path.join(__dirname, 'public');
 
 // ---- Static file server ----
@@ -49,7 +51,7 @@ function broadcast(){
   }
 }
 
-function sendState(ws){
+function sendState(ws, error = null){
   const yourSeat = seatOfWs(ws);
   const payload = {
     type: 'state',
@@ -57,6 +59,8 @@ function sendState(ws){
     seatNames: seats.map(s => s.name),
     seatIsAI: seats.map(s => s.isAI),
     handCounts: game.hands.map(h => h.length),
+    handNumber: game.handNumber,
+    handPlayCount: game.handPlayCount,
     teamLevel: game.teamLevel,
     bankerTeam: game.bankerTeam,
     levelRank: game.levelRank(),
@@ -67,6 +71,17 @@ function sendState(ws){
     currentTrick: game.currentTrick ? { playerIdx: game.currentTrick.playerIdx, combo: game.currentTrick.combo, cards: game.currentTrick.cards } : null,
     lastPlays,
     lastResult: game.lastResult || null,
+    ace14Streak: game.ace14Streak,
+    tribute: game.tribute ? {
+      kind: game.tribute.kind, phase: game.tribute.phase, rebellion: game.tribute.rebellion,
+      leader: game.tribute.leader,
+      exchanges: game.tribute.exchanges.map(e => ({
+        from: e.from, to: e.to, tributeCard: e.tributeCard, returned: !!e.returnCard,
+        returnCard: game.tribute.phase === 'complete' ? e.returnCard : null,
+      })),
+    } : null,
+    tributeReturnUids: yourSeat === -1 ? [] : game.tributeReturnOptions(yourSeat).map(c => c.uid),
+    error,
     log: game.log.slice(-60),
   };
   if (yourSeat !== -1) payload.yourHand = game.hands[yourSeat];
@@ -106,6 +121,20 @@ function scheduleNext(){
     return;
   }
   broadcast();
+  if (game.tributePending()){
+    const exchange = game.tribute.exchanges.find(e => !e.returnCard && seats[e.to].isAI);
+    if (exchange){
+      const scheduledGame = game;
+      aiTimer = setTimeout(() => {
+        if (game !== scheduledGame || !hasHumanPlayers() || !seats[exchange.to].isAI || !game.tributePending()) return;
+        const options = game.tributeReturnOptions(exchange.to);
+        options.sort((a,b) => game.hands[exchange.to].filter(c => c.rank === a.rank).length - game.hands[exchange.to].filter(c => c.rank === b.rank).length);
+        if (options.length) game.returnTribute(exchange.to, options[0].uid);
+        scheduleNext();
+      }, 900);
+    }
+    return;
+  }
   if (seats[game.turn].isAI){
     const scheduledGame = game;
     const seat = game.turn;
@@ -157,7 +186,10 @@ wss.on('connection', (ws) => {
     const seat = seatOfWs(ws);
     if (seat === -1) return; // spectators can't act
 
-    if (msg.type === 'play'){
+    if (msg.type === 'returnTribute'){
+      const res = game.returnTribute(seat, msg.uid);
+      if (res.ok) scheduleNext(); else sendState(ws, res.reason);
+    } else if (msg.type === 'play'){
       if (!game.legalTurn(seat)) return;
       const uidSet = new Set(msg.uids || []);
       const cards = game.hands[seat].filter(c => uidSet.has(c.uid));
@@ -191,21 +223,14 @@ wss.on('connection', (ws) => {
   sendState(ws);
 });
 
-function localIPs(){
-  const nets = os.networkInterfaces();
-  const out = [];
-  for (const name of Object.keys(nets)){
-    for (const net of nets[name]){
-      if (net.family === 'IPv4' && !net.internal) out.push(net.address);
-    }
-  }
-  return out;
-}
-
-server.listen(PORT, () => {
+// Listen on every IPv4 interface, including Tailscale and localhost.
+server.listen(PORT, '0.0.0.0', () => {
   console.log(`\nGuandan table running.`);
   console.log(`  On this machine: http://localhost:${PORT}`);
-  for (const ip of localIPs()) console.log(`  On your network:  http://${ip}:${PORT}`);
-  console.log(`\nShare the "on your network" link with friends on the same WiFi/LAN.\nPress Ctrl+C to stop.\n`);
+  console.log(`  On your tailnet: http://${TAILSCALE_IP}:${PORT}`);
+  if (TAILSCALE_IP === 'XXX.XXX.XXX.XXX'){
+    console.log('  Replace XXX.XXX.XXX.XXX in server.js (TAILSCALE_IP), or set the TAILSCALE_IP environment variable.');
+  }
+  console.log(`\nShare the "on your tailnet" link with friends connected to your tailnet.\nKeep this computer and Tailscale running while you play.\nPress Ctrl+C to stop.\n`);
   scheduleNext();
 });

@@ -7,6 +7,16 @@ function simulateOneGame(gameIdx){
   while (!g.gameOver){
     handCount++;
     if (handCount > 200) throw new Error('too many hands, likely stuck');
+    while (g.tributePending()){
+      const exchange = g.tribute.exchanges.find(e => !e.returnCard);
+      const options = g.tributeReturnOptions(exchange.to);
+      if (!options.length) throw new Error('No legal tribute return');
+      const result = g.returnTribute(exchange.to, options[0].uid);
+      if (!result.ok) throw new Error('Illegal tribute return: ' + result.reason);
+    }
+    if (g.hands.some(h => h.length !== 27) || new Set(g.hands.flat().map(c => c.uid)).size !== 108){
+      throw new Error('Tribute exchange lost, duplicated, or miscounted cards');
+    }
     while (!g.handOver){
       turnGuard++;
       if (turnGuard > 20000) throw new Error('turn guard tripped, likely infinite loop');

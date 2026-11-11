@@ -17,6 +17,7 @@
     --cream: #ede3c8;
     --cream-dim: #b8ac8c;
     --wild-glow: #e7c565;
+    --hand-card-width: 52px;
   }
   *{ box-sizing: border-box; }
   html,body{ height:100%; }
@@ -29,7 +30,7 @@
     height: 100vh;
     user-select: none;
   }
-  .table{ position: relative; width: 100%; height: 100%; display: grid; grid-template-rows: auto 1fr auto; }
+  .table{ position: relative; width: 100%; height: 100%; display: grid; grid-template-columns:minmax(0,1fr); grid-template-rows: auto 1fr auto; }
 
   .topbar{
     display:flex; align-items:center; justify-content: space-between;
@@ -48,11 +49,11 @@
   .btn-log{ background: transparent; border: 1px solid var(--gold-dim); color: var(--cream-dim); border-radius: 8px; padding: 5px 10px; font-size: 12px; cursor: pointer; }
   .btn-log:hover{ border-color: var(--gold); color: var(--gold); }
 
-  .center-area{ position: relative; display: grid; grid-template-columns: 150px 1fr 150px; grid-template-rows: 90px 1fr; padding: 8px 24px; min-height: 0; }
+  .center-area{ position: relative; display: grid; grid-template-columns: 150px 1fr 150px; grid-template-rows: 90px 1fr; padding: 8px 24px; min-height: 0; overflow:hidden; }
   .seat-partner{ grid-column: 2; grid-row: 1; display:flex; flex-direction:column; align-items:center; gap:4px; }
   .seat-left{ grid-column: 1; grid-row: 2; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; }
   .seat-right{ grid-column: 3; grid-row: 2; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; }
-  .trick-zone{ grid-column: 2; grid-row: 2; display:flex; align-items:center; justify-content:center; }
+  .trick-zone{ grid-column: 2; grid-row: 2; min-width:0; min-height:0; }
 
   .seat-label{ font-size: 12px; color: var(--cream-dim); letter-spacing: 0.03em; display:flex; align-items:center; gap:6px; text-align:center; }
   .seat-label .turn-dot{ width:8px;height:8px;border-radius:50%; background: var(--gold); opacity:0; box-shadow: 0 0 8px var(--gold); flex-shrink:0; }
@@ -65,15 +66,20 @@
   .cb{ background: repeating-linear-gradient(135deg, #6e2020, #6e2020 4px, #7c2a2a 4px, #7c2a2a 8px); border: 1px solid var(--gold-dim); border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.4); }
   .cardback-fan .cb:first-child{ margin: 0; }
 
-  .played-group{ display:flex; flex-direction:column; align-items:center; gap:4px; padding: 6px 10px; min-width: 70px; }
-  .played-cards{ display:flex; }
+  .played-group{ display:flex; flex-direction:column; align-items:center; gap:4px; padding:6px; min-width:0; min-height:0; max-width:100%; max-height:100%; border:1px solid transparent; border-radius:8px; }
+  .played-group:empty{ visibility:hidden; }
+  .played-group.winning-play{ border-color:var(--gold-dim); background:rgba(0,0,0,0.18); }
+  .played-top{ grid-column:1 / -1; grid-row:1; justify-self:center; align-self:start; }
+  .played-left{ grid-column:1; grid-row:2; justify-self:start; align-self:center; }
+  .played-right{ grid-column:2; grid-row:2; justify-self:end; align-self:center; }
+  .played-bottom{ grid-column:1 / -1; grid-row:3; justify-self:center; align-self:end; }
+  .played-cards{ display:flex; flex-wrap:wrap; justify-content:center; max-width:100%; min-height:0; overflow:auto; padding:3px 0 3px 18px; row-gap:4px; }
   .played-cards .card{ margin-left: -18px; }
-  .played-cards .card:first-child{ margin-left:0; }
-  .played-tag{ font-size:11px; color: var(--cream-dim); }
-  .trick-inner{ display:flex; gap: 22px; align-items:center; flex-wrap: wrap; justify-content:center; max-width: 640px; }
-  .trick-empty{ color: var(--cream-dim); font-size: 13px; font-style: italic; opacity:0.7; }
+  .played-tag{ font-size:11px; color: var(--cream-dim); text-align:center; flex-shrink:0; overflow-wrap:anywhere; }
+  .trick-inner{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); grid-template-rows:minmax(80px,1fr) minmax(0,2fr) minmax(80px,1fr); gap:8px; width:100%; height:100%; }
+  .trick-empty{ grid-column:1 / -1; grid-row:2; align-self:center; justify-self:center; text-align:center; color: var(--cream-dim); font-size: 13px; font-style: italic; opacity:0.7; }
 
-  .card{ width: 52px; height: 74px; background: var(--ivory); border-radius: 6px; border: 1px solid rgba(0,0,0,0.25); box-shadow: 0 2px 3px rgba(0,0,0,0.35); display:flex; flex-direction:column; justify-content: space-between; padding: 4px 5px; font-weight:700; font-size: 14px; line-height:1; position: relative; flex-shrink:0; }
+  .card{ width: var(--hand-card-width); height: 74px; background: var(--ivory); border-radius: 6px; border: 1px solid rgba(0,0,0,0.25); box-shadow: 0 2px 3px rgba(0,0,0,0.35); display:flex; flex-direction:column; justify-content: space-between; padding: 4px 5px; font-weight:700; font-size: 14px; line-height:1; position: relative; flex-shrink:0; }
   .card.small{ width:40px; height:56px; font-size:11px; padding:3px 4px; }
   .card .suit-icon{ width:16px; height:16px; align-self:flex-end; }
   .card.small .suit-icon{ width:12px; height:12px; }
@@ -87,9 +93,9 @@
   .card.joker-big{ color: var(--red); }
   .card.joker-small{ color: var(--ink); }
 
-  .hand-bar{ position: relative; padding: 10px 18px 14px; background: linear-gradient(0deg, rgba(0,0,0,0.4), transparent); border-top: 1px solid rgba(201,162,75,0.25); z-index: 5; }
+  .hand-bar{ position: relative; min-width:0; padding: 10px 18px 14px; background: linear-gradient(0deg, rgba(0,0,0,0.4), transparent); border-top: 1px solid rgba(201,162,75,0.25); z-index: 5; }
   .hand-count{ text-align:center; font-size: 12px; color: var(--cream-dim); letter-spacing: 0.05em; margin-bottom: 2px; }
-  .hand-row{ display:flex; justify-content:center; gap: 0; overflow-x:auto; padding: 10px 4px 4px; min-height: 84px; }
+  .hand-row{ display:flex; justify-content:safe center; gap: 0; overflow-x:auto; padding: 10px 4px 4px; min-height: 84px; }
   .hand-row .card{ cursor:pointer; transition: transform 0.12s ease; flex-shrink:0; }
   .hand-row .card:first-child{ margin-left:0 !important; }
   .hand-row .card:hover{ transform: translateY(-8px); }
@@ -101,6 +107,12 @@
   .btn:hover:not(:disabled){ background: var(--gold); color: var(--ink); }
   .btn:disabled{ opacity: 0.35; cursor: default; }
   .btn.secondary{ color: var(--cream-dim); }
+  .tribute-notice{ max-width:780px; margin:0 auto 8px; padding:8px 12px; border:1px solid var(--gold-dim); border-radius:8px; background:rgba(0,0,0,0.22); font-size:12px; line-height:1.5; text-align:center; }
+  .tribute-notice b{ display:block; color:var(--gold); }
+  .tribute-exchanges{ color:var(--cream-dim); font-size:11px; }
+  .hand-row .card.tribute-eligible{ box-shadow:0 0 0 2px var(--gold); }
+  .hand-row .card.tribute-ineligible{ opacity:0.4; cursor:default; }
+  .hand-row .card.tribute-ineligible:hover{ transform:none; }
 
   .overlay{ position: fixed; inset:0; background: rgba(3,10,7,0.72); display:flex; align-items:center; justify-content:center; z-index: 50; }
   .overlay.hidden{ display:none; }
@@ -128,9 +140,44 @@
   .conn-banner.hidden{ display:none; }
 
   @media (max-width: 720px){
-    .center-area{ grid-template-columns: 70px 1fr 70px; padding: 4px 8px; }
-    .card{ width:40px; height:58px; font-size:12px; }
+    :root{ --hand-card-width:40px; }
+    .topbar{ flex-wrap:wrap; gap:8px; }
+    .levels{ order:1; width:100%; justify-content:center; gap:8px; }
+    .level-badge{ padding:4px 8px; gap:5px; }
+    .center-area{ grid-template-columns:64px minmax(0,1fr) 64px; grid-template-rows:64px minmax(0,1fr); padding:4px 6px; }
+    .seat-label{ font-size:10px; overflow-wrap:anywhere; }
+    .cardback-fan.vertical .cb{ width:24px; height:34px; margin-top:-24px; }
+    .cardback-fan.vertical .cb:first-child{ margin-top:0; }
+    .trick-inner{ gap:4px; }
+    .played-group{ padding:4px; }
+    .played-cards{ padding-left:14px; }
+    .played-cards .card{ margin-left:-14px; }
+    .played-cards .card.small{ width:32px; height:46px; }
+    .card{ height:58px; font-size:12px; }
     .hand-row .card{ margin-left:-24px; }
+  }
+  @media (max-height: 520px){
+    :root{ --hand-card-width:36px; }
+    .topbar{ padding:6px 12px; flex-wrap:nowrap; gap:6px; }
+    .title{ font-size:14px; }
+    .title span{ display:none; }
+    .levels{ order:0; width:auto; flex-wrap:nowrap; gap:4px; }
+    .level-badge{ padding:3px 6px; font-size:11px; gap:4px; }
+    .center-area{ grid-template-columns:72px minmax(0,1fr) 72px; grid-template-rows:32px minmax(0,1fr); padding:4px 8px; }
+    .cardback-fan{ display:none; }
+    .trick-inner{ grid-template-rows:minmax(60px,1fr) minmax(0,1fr) minmax(60px,1fr); gap:2px; }
+    .played-group{ padding:3px; gap:2px; }
+    .played-tag{ font-size:10px; }
+    .played-cards{ padding-left:12px; }
+    .played-cards .card{ margin-left:-12px; }
+    .played-cards .card.small{ width:28px; height:38px; font-size:10px; }
+    .hand-bar{ padding:4px 10px 6px; }
+    .hand-count{ font-size:10px; }
+    .hand-row{ min-height:56px; padding:4px; }
+    .card{ height:50px; font-size:12px; }
+    .controls{ gap:6px; margin-top:0; }
+    .controls .status{ min-width:0; font-size:11px; }
+    .btn{ padding:6px 12px; font-size:12px; }
   }
 </style>
 </head>
@@ -165,16 +212,28 @@
       <div class="cardback-fan vertical" id="backs-right"></div>
     </div>
     <div class="trick-zone">
-      <div class="trick-inner" id="trick-inner"><div class="trick-empty">Waiting for the opening lead…</div></div>
+      <div class="trick-inner" id="trick-inner">
+        <div class="played-group played-top" id="played-top" role="group"></div>
+        <div class="played-group played-left" id="played-left" role="group"></div>
+        <div class="played-group played-right" id="played-right" role="group"></div>
+        <div class="played-group played-bottom" id="played-bottom" role="group"></div>
+        <div class="trick-empty" id="trick-empty">Waiting for the opening lead…</div>
+      </div>
     </div>
   </div>
 
   <div class="hand-bar">
+    <div class="tribute-notice" id="tribute-notice" role="status" hidden>
+      <b id="tribute-title"></b>
+      <div id="tribute-description"></div>
+      <div class="tribute-exchanges" id="tribute-exchanges"></div>
+    </div>
     <div class="hand-count" id="hand-count">Your hand</div>
     <div class="hand-row" id="hand-row"></div>
     <div class="controls">
       <button class="btn" id="btn-play">Play Selected</button>
       <button class="btn secondary" id="btn-pass">Pass</button>
+      <button class="btn" id="btn-return-tribute" hidden>Return Selected Card</button>
       <button class="btn secondary" id="btn-clear">Clear Selection</button>
       <div class="status" id="status">Connecting…</div>
     </div>
@@ -204,9 +263,9 @@
     <div class="rules-body">
       <p>Seats 0 &amp; 2 are Team A, seats 1 &amp; 3 are Team B. Two decks (108 cards) are used.</p>
       <h4>Card strength (low → high)</h4>
-      <p>3 4 5 6 7 8 9 10 J Q K A 2, then the wildcard, then the small joker, then the big joker.</p>
+      <p>2 3 4 5 6 7 8 9 10 J Q K A, then all suits of the current level, then the small joker, then the big joker.</p>
       <h4>The level card</h4>
-      <p>Each hand has a "level" rank (top bar). All four suits of that rank rank above Ace, just below the jokers. The <b>Hearts</b> copy is additionally a wildcard — it can stand in for any card to help complete a pair, triple, straight, tractor, plane, or even a bomb (marked with 万 on the card). The other three suits are just very strong natural cards, not substitutes (marked with 级).</p>
+      <p>Each hand has a "level" rank (top bar). All four suits of that rank rank above Ace, just below the jokers. The <b>Hearts</b> copy is additionally a wildcard — it can stand in for a non-joker card to help complete a pair, triple, straight, tractor, plane, or bomb (marked with 万). It <b>cannot replace a small or big joker</b>. The other three suits are strong natural cards, not substitutes (marked with 级).</p>
       <h4>Combos</h4>
       <ul>
         <li>Single, Pair, Triple, Triple+Pair</li>
@@ -217,8 +276,10 @@
         <li>Joker Bomb — all four jokers, beats everything</li>
       </ul>
       <h4>Winning</h4>
-      <p>Hand ends when 3 players finish. Your team's level jumps +3 if you finish 1st &amp; 2nd, +2 for 1st &amp; 3rd, +1 for 1st &amp; 4th. First team past level A wins.</p>
-      <p style="opacity:0.7;font-size:12px;margin-top:10px;">Simplified from tournament rules: no tribute-card exchange phase between hands.</p>
+      <p>A 1st &amp; 2nd finish ends the hand immediately; otherwise it ends after 3 finishers. Your team advances +3 for 1st &amp; 2nd, +2 for 1st &amp; 3rd, or +1 for 1st &amp; 4th, stopping at Ace. To win the game, finish 1st &amp; 2nd or 1st &amp; 3rd while playing your own Ace level. Three consecutive 1st &amp; 4th wins at your own Ace level send your team back to 2; an intervening loss breaks the streak.</p>
+      <h4>Tribute and return</h4>
+      <p>After the next deal, a 1–2 win makes both losers give their largest non-wild card. First place receives the higher tribute, second place the lower. After a 1–3 or 1–4 win, last place gives their largest non-wild card to first place. Each recipient returns <b>one non-trump 2–9</b> to the person who gave them tribute. All suits of the current level rank are trumps above Ace and are excluded from this range. If no eligible 2–9 is available, they must return their lowest non-wild card. Choose your return from the highlighted cards; bots choose automatically. Both returns are revealed together.</p>
+      <p>Wildcards are exempt from tribute. If both big jokers are held by the two donors in a double tribute, or by last place in a single tribute, they rebel: no cards are exchanged and the previous first-place player leads. Otherwise, the largest-card giver leads (ties go to the giver whose card went to first place).</p>
     </div>
     <button class="btn" id="btn-close-rules" style="margin-top:14px;">Got it</button>
   </div>
@@ -297,7 +358,9 @@ function connect(){
     if (myName) ws.send(JSON.stringify({ type: 'join', name: myName }));
   };
   ws.onmessage = (ev) => {
-    state = JSON.parse(ev.data);
+    const nextState = JSON.parse(ev.data);
+    if (!state || nextState.handNumber !== state.handNumber || (nextState.tribute?.phase === 'return') !== (state.tribute?.phase === 'return')) selected.clear();
+    state = nextState;
     render();
   };
   ws.onclose = () => {
@@ -317,13 +380,43 @@ el('name-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') el(
 
 function slotSeat(slot){
   const mine = (state && state.yourSeat !== null && state.yourSeat !== undefined) ? state.yourSeat : 0;
-  const offsets = { right: 1, top: 2, left: 3 };
+  const offsets = { bottom: 0, right: 1, top: 2, left: 3 };
   return (mine + offsets[slot]) % 4;
+}
+
+function tributeCardLabel(card){
+  if (card.joker) return card.joker === 'big' ? 'big joker' : 'small joker';
+  return card.rank + { S:'♠', H:'♥', D:'♦', C:'♣' }[card.suit];
 }
 
 function render(){
   if (!state) return;
   const mySeat = state.yourSeat;
+  const tributePending = state.tribute?.phase === 'return';
+  const returnOptions = new Set(state.tributeReturnUids || []);
+  const myExchange = state.tribute?.exchanges.find(e => e.to === mySeat);
+  const choosingReturn = tributePending && myExchange && !myExchange.returned;
+  for (const uid of selected){
+    if (!state.yourHand?.some(c => c.uid === uid) || (tributePending && !returnOptions.has(uid))) selected.delete(uid);
+  }
+
+  const showTribute = !!state.tribute && (tributePending || state.handPlayCount === 0);
+  el('tribute-notice').hidden = !showTribute;
+  if (showTribute){
+    const tribute = state.tribute;
+    const who = seat => seat === mySeat ? 'You' : state.seatNames[seat];
+    el('tribute-title').textContent = tribute.rebellion ? 'Tribute rebellion — no exchange' : choosingReturn ? 'Choose a return card' : tributePending ? 'Tribute exchange' : 'Tribute exchange complete';
+    if (choosingReturn){
+      const hasLowCard = state.yourHand.some(c => returnOptions.has(c.uid) && !c.joker && c.rank !== state.levelRank && ['2','3','4','5','6','7','8','9'].includes(c.rank));
+      el('tribute-description').textContent = `You received ${tributeCardLabel(myExchange.tributeCard)} from ${who(myExchange.from)}. ${hasLowCard ? 'Select one highlighted non-trump 2–9' : 'You have no eligible 2–9; select a highlighted lowest non-wild card'} to return to them.`;
+    } else if (tributePending){
+      const waiting = tribute.exchanges.filter(e => !e.returned).map(e => who(e.to)).join(' and ');
+      el('tribute-description').textContent = `Waiting for ${waiting} to choose a return card. Play starts after all returns are selected.`;
+    } else {
+      el('tribute-description').textContent = `${who(tribute.leader)} ${tribute.leader === mySeat ? 'lead' : 'leads'} this hand.`;
+    }
+    el('tribute-exchanges').textContent = tribute.exchanges.map(e => `${who(e.from)} → ${who(e.to)}: ${tributeCardLabel(e.tributeCard)}${e.returnCard ? `; returned ${tributeCardLabel(e.returnCard)}` : ''}`).join(' · ');
+  }
 
   el('lvl-team0').textContent = state.teamLevel[0] >= 12 ? 'A' + (state.teamLevel[0] > 12 ? '+' : '') : ['2','3','4','5','6','7','8','9','10','J','Q','K','A'][Math.min(state.teamLevel[0],12)];
   el('lvl-team1').textContent = state.teamLevel[1] >= 12 ? 'A' + (state.teamLevel[1] > 12 ? '+' : '') : ['2','3','4','5','6','7','8','9','10','J','Q','K','A'][Math.min(state.teamLevel[1],12)];
@@ -341,38 +434,34 @@ function render(){
     for (let i = 0; i < count; i++){ const d = document.createElement('div'); d.className = 'cb'; backs.appendChild(d); }
   }
 
-  const trickInner = el('trick-inner');
-  trickInner.innerHTML = '';
-  const seatsWithPlays = Object.keys(state.lastPlays || {});
-  if (seatsWithPlays.length === 0){
-    const e = document.createElement('div');
-    e.className = 'trick-empty';
-    e.textContent = 'New trick — waiting for the lead…';
-    trickInner.appendChild(e);
-  } else {
-    for (let seat = 0; seat < 4; seat++){
-      const p = state.lastPlays[seat];
-      if (!p) continue;
-      const grp = document.createElement('div');
-      grp.className = 'played-group';
-      const tag = document.createElement('div');
-      tag.className = 'played-tag';
-      tag.textContent = (seat === mySeat ? 'You' : state.seatNames[seat]);
-      const cardsWrap = document.createElement('div');
-      cardsWrap.className = 'played-cards';
-      for (const c of p.cards) cardsWrap.appendChild(cardEl(c, { small: true, isWild: isWildCard(c, state.levelRank), isLevel: isLevelCard(c, state.levelRank) }));
-      grp.appendChild(tag);
-      grp.appendChild(cardsWrap);
-      trickInner.appendChild(grp);
-    }
+  el('trick-empty').hidden = Object.keys(state.lastPlays || {}).length > 0;
+  el('trick-empty').textContent = tributePending ? 'Tribute exchange in progress…' : 'New trick — waiting for the lead…';
+  for (const slot of ['top','left','right','bottom']){
+    const seat = slotSeat(slot);
+    const p = (state.lastPlays || {})[seat];
+    const grp = el('played-' + slot);
+    grp.replaceChildren();
+    const name = seat === mySeat ? 'You' : state.seatNames[seat];
+    grp.setAttribute('aria-label', `Cards played by ${name}`);
+    grp.dataset.seat = seat;
+    grp.classList.toggle('winning-play', !!p && !!state.currentTrick && state.currentTrick.playerIdx === seat);
+    if (!p) continue;
+    const tag = document.createElement('div');
+    tag.className = 'played-tag';
+    tag.textContent = name;
+    const cardsWrap = document.createElement('div');
+    cardsWrap.className = 'played-cards';
+    for (const c of p.cards) cardsWrap.appendChild(cardEl(c, { small: true, isWild: isWildCard(c, state.levelRank), isLevel: isLevelCard(c, state.levelRank) }));
+    grp.appendChild(tag);
+    grp.appendChild(cardsWrap);
   }
 
   const handRow = el('hand-row');
   handRow.innerHTML = '';
-  const yourTurn = mySeat !== null && state.turn === mySeat && !state.handOver && !state.gameOver;
+  const yourTurn = mySeat !== null && state.turn === mySeat && !state.handOver && !state.gameOver && !tributePending;
   if (mySeat !== null && state.yourHand){
     el('hand-count').textContent = `Your hand — ${state.yourHand.length} card${state.yourHand.length === 1 ? '' : 's'}`;
-    const cardW = 52;
+    const cardW = parseFloat(getComputedStyle(handRow).getPropertyValue('--hand-card-width')) || 52;
     const containerW = handRow.clientWidth || (window.innerWidth - 40);
     const count = state.yourHand.length;
     // Space cards so the whole hand fits without needing to scroll, but never overlap more
@@ -384,11 +473,19 @@ function render(){
     }
     state.yourHand.forEach((c, i) => {
       const d = cardEl(c, { isWild: isWildCard(c, state.levelRank), isLevel: isLevelCard(c, state.levelRank) });
+      if (choosingReturn) d.classList.add(returnOptions.has(c.uid) ? 'tribute-eligible' : 'tribute-ineligible');
       if (i > 0) d.style.marginLeft = `-${overlap}px`;
       if (selected.has(c.uid)) d.classList.add('selected');
       d.addEventListener('click', () => {
-        if (!yourTurn) return;
-        if (selected.has(c.uid)) selected.delete(c.uid); else selected.add(c.uid);
+        if (choosingReturn){
+          if (!returnOptions.has(c.uid)) return;
+          const wasSelected = selected.has(c.uid);
+          selected.clear();
+          if (!wasSelected) selected.add(c.uid);
+        } else {
+          if (!yourTurn) return;
+          if (selected.has(c.uid)) selected.delete(c.uid); else selected.add(c.uid);
+        }
         render();
       });
       handRow.appendChild(d);
@@ -400,11 +497,16 @@ function render(){
   el('btn-play').disabled = !yourTurn || selected.size === 0;
   el('btn-pass').disabled = !yourTurn || !state.currentTrick;
   el('btn-clear').disabled = selected.size === 0;
+  el('btn-play').hidden = tributePending;
+  el('btn-pass').hidden = tributePending;
+  el('btn-return-tribute').hidden = !choosingReturn;
+  el('btn-return-tribute').disabled = !choosingReturn || selected.size !== 1;
 
   const statusEl = el('status');
   if (state.gameOver){ statusEl.textContent = 'Game over.'; }
   else if (mySeat === null){ statusEl.textContent = 'Table is full — you are spectating.'; }
   else if (state.handOver){ statusEl.textContent = 'Hand finished — next hand starting…'; }
+  else if (tributePending){ statusEl.textContent = choosingReturn ? 'Choose one highlighted card, then Return Selected Card.' : 'Waiting for the tribute exchange…'; }
   else if (yourTurn){
     statusEl.textContent = state.currentTrick
       ? `Your turn — beat ${state.currentTrick.combo.type.replace('_',' ').toLowerCase()} (${state.currentTrick.combo.size}) or pass.`
@@ -412,6 +514,7 @@ function render(){
   } else {
     statusEl.textContent = `Waiting on ${state.seatNames[state.turn]}…`;
   }
+  if (state.error === 'invalid-tribute-return') statusEl.textContent = 'That card cannot be returned. Choose one of the highlighted cards.';
 
   const logBody = el('log-body');
   logBody.innerHTML = (state.log || []).map(l => `<div>${l}</div>`).join('');
@@ -429,8 +532,12 @@ function render(){
         }
         return `<li style="opacity:0.65;">Did not finish — hand ended: <b>${who}</b></li>`;
       }).join('');
-      const teamName = r.winTeam === (mySeat!==null ? mySeat%2 : 0) ? 'Your team' : 'The other team';
-      el('hand-summary').textContent = `Team ${r.winTeam === 0 ? 'A' : 'B'} advances +${r.upgrade} level${r.upgrade>1?'s':''}.`;
+      const teamName = `Team ${r.winTeam === 0 ? 'A' : 'B'}`;
+      el('hand-summary').textContent = r.resetToTwo
+        ? `${teamName} has three consecutive 1–4 wins at Ace and drops back to level 2.`
+        : r.aceFailureCount
+          ? `${teamName} stays at Ace: ${r.aceFailureCount}/3 consecutive 1–4 wins. A 1–2 or 1–3 win at its own Ace level wins the game.`
+          : `${teamName} advances to level ${r.levelAfter || state.levelRank}.`;
       el('hand-title').textContent = `Team ${r.winTeam === 0 ? 'A' : 'B'} wins the hand!`;
       el('overlay-hand').classList.remove('hidden');
     }
@@ -451,6 +558,12 @@ el('btn-play').addEventListener('click', () => {
   if (!ws || ws.readyState !== 1) return;
   ws.send(JSON.stringify({ type: 'play', uids: Array.from(selected) }));
   selected.clear();
+});
+el('btn-return-tribute').addEventListener('click', () => {
+  if (!ws || ws.readyState !== 1 || selected.size !== 1) return;
+  ws.send(JSON.stringify({ type: 'returnTribute', uid: Array.from(selected)[0] }));
+  selected.clear();
+  render();
 });
 el('btn-pass').addEventListener('click', () => {
   if (!ws || ws.readyState !== 1) return;
@@ -475,6 +588,7 @@ document.addEventListener('keydown', (event) => {
 });
 el('btn-rules').addEventListener('click', () => el('overlay-rules').classList.remove('hidden'));
 el('btn-close-rules').addEventListener('click', () => el('overlay-rules').classList.add('hidden'));
+window.addEventListener('resize', render);
 </script>
 </body>
 </html>

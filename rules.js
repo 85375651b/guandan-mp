@@ -108,7 +108,7 @@ function classifyCombo(cards, levelRank){
 
   // Joker bomb: exactly all 4 jokers (2 small + 2 big), nothing else
   if (jokers.length > 0){
-    if (nonJokers.length > 0) return null; // jokers never mix with other cards
+    if (nonJokers.length > 0) return null; // In particular, wildcards cannot replace either joker.
     if (jokers.length === 2){
       // A pair of like jokers (two smalls, or two bigs) is a legal natural PAIR.
       const smalls = jokers.filter(j => j.joker === 'small').length;
@@ -414,6 +414,7 @@ function aiChooseFollow(hand, levelRank, current, teammateWinning){
 class Game {
   constructor(){
     this.teamLevel = [0, 0]; // index into LEVEL_ORDER for team 0 (you+partner) and team 1 (opponents)
+    this.ace14Streak = [0, 0];
     this.bankerTeam = 0;
     this.gameOver = false;
     this.winner = null;
@@ -423,9 +424,14 @@ class Game {
 
   teamOf(playerIdx){ return playerIdx % 2 === 0 ? 0 : 1; } // seats 0,2 = team0 ; 1,3 = team1
 
-  levelRank(){ return LEVEL_ORDER[this.teamLevel[this.bankerTeam]]; }
+  levelRank(){ return this.handLevelRank; }
 
   startHand(leaderIdx){
+    const previousResult = this.lastResult;
+    this.handBankerTeam = this.bankerTeam;
+    this.handLevelRank = LEVEL_ORDER[this.teamLevel[this.bankerTeam]];
+    this.handNumber = (this.handNumber || 0) + 1;
+    this.handPlayCount = 0;
     const deck = shuffle(buildDeck());
     this.hands = [[], [], [], []];
     for (let i = 0; i < deck.length; i++) this.hands[i % 4].push(deck[i]);
@@ -437,11 +443,87 @@ class Game {
     this.leader = leaderIdx === null ? Math.floor(Math.random() * 4) : leaderIdx;
     this.turn = this.leader;
     this.handOver = false;
+    this.trickJustCleared = false;
+    this.tribute = null;
+    if (previousResult) this.beginTribute(previousResult);
   }
 
-  legalTurn(playerIdx){ return !this.handOver && this.turn === playerIdx && this.activeMask[playerIdx]; }
+  tributePending(){ return this.tribute?.phase === 'return'; }
+
+  sortHands(){
+    for (const hand of this.hands) hand.sort((a,b) => singleValue(a, this.levelRank()) - singleValue(b, this.levelRank()));
+  }
+
+  beginTribute(result){
+    const [first, second, third, fourth] = result.finishedOrder;
+    const double = this.teamOf(first) === this.teamOf(second);
+    const donors = double ? [third, fourth] : [fourth];
+    const bigJokers = donors.reduce((n, seat) => n + this.hands[seat].filter(c => c.joker === 'big').length, 0);
+    this.tribute = { kind: double ? 'double' : 'single', phase: 'complete', rebellion: bigJokers === 2, exchanges: [], leader: first };
+    if (this.tribute.rebellion){
+      this.leader = this.turn = first;
+      this.log.push(`Tribute rebellion: both big jokers are held by the tribute side. P${first} leads.`);
+      return;
+    }
+    // Choose all tribute cards before moving any, using the NEW hand's level.
+    const offers = donors.map(from => {
+      const eligible = this.hands[from].filter(c => !isWild(c, this.levelRank()));
+      const card = eligible.reduce((best, c) => !best || singleValue(c, this.levelRank()) > singleValue(best, this.levelRank()) ? c : best, null);
+      return { from, card };
+    }).sort((a,b) => singleValue(b.card, this.levelRank()) - singleValue(a.card, this.levelRank()));
+    const recipients = double ? [first, second] : [first];
+    this.tribute.leader = offers[0].from;
+    this.tribute.phase = 'return';
+    this.turn = null; // Nobody may play until every return has been selected.
+    this.tribute.exchanges = offers.map(({ from, card }, i) => {
+      const to = recipients[i];
+      this.hands[from].splice(this.hands[from].findIndex(c => c.uid === card.uid), 1);
+      this.hands[to].push(card);
+      this.log.push(`P${from} gives ${cardLabel(card)} as tribute to P${to}.`);
+      return { from, to, tributeCard: card, returnCard: null };
+    });
+    this.sortHands();
+  }
+
+  tributeReturnOptions(playerIdx){
+    if (!this.tributePending()) return [];
+    const exchange = this.tribute.exchanges.find(e => e.to === playerIdx && !e.returnCard);
+    if (!exchange) return [];
+    const nonWild = this.hands[playerIdx].filter(c => !isWild(c, this.levelRank()));
+    // Use playing strength: every suit of the level rank is above Ace, even 2–9.
+    const lowCards = nonWild.filter(c => !c.joker && singleValue(c, this.levelRank()) <= rankIdx('9'));
+    if (lowCards.length) return lowCards;
+    // Agreed house rule: with no non-trump 2–9, only a lowest non-wild card may be returned.
+    const lowest = Math.min(...nonWild.map(c => singleValue(c, this.levelRank())));
+    return nonWild.filter(c => singleValue(c, this.levelRank()) === lowest);
+  }
+
+  returnTribute(playerIdx, uid){
+    if (!this.tributePending()) return { ok: false, reason: 'no-tribute-pending' };
+    const exchange = this.tribute.exchanges.find(e => e.to === playerIdx && !e.returnCard);
+    if (!exchange) return { ok: false, reason: 'not-awaiting-your-return' };
+    const card = this.tributeReturnOptions(playerIdx).find(c => c.uid === uid);
+    if (!card) return { ok: false, reason: 'invalid-tribute-return' };
+    exchange.returnCard = card;
+    // Resolve together so one recipient cannot see the other's choice before choosing.
+    if (this.tribute.exchanges.every(e => e.returnCard)){
+      for (const e of this.tribute.exchanges){
+        this.hands[e.to].splice(this.hands[e.to].findIndex(c => c.uid === e.returnCard.uid), 1);
+        this.hands[e.from].push(e.returnCard);
+        this.log.push(`P${e.to} returns ${cardLabel(e.returnCard)} to P${e.from}.`);
+      }
+      this.sortHands();
+      this.tribute.phase = 'complete';
+      this.leader = this.turn = this.tribute.leader;
+      this.log.push(`Tribute exchange complete. P${this.turn} leads.`);
+    }
+    return { ok: true };
+  }
+
+  legalTurn(playerIdx){ return !this.gameOver && !this.handOver && !this.tributePending() && this.turn === playerIdx && this.activeMask[playerIdx]; }
 
   playCards(playerIdx, cards){
+    if (this.tributePending()) return { ok: false, reason: 'tribute-pending' };
     const level = this.levelRank();
     const combo = classifyCombo(cards, level);
     if (!combo) return { ok: false, reason: 'not-a-valid-combo' };
@@ -454,6 +536,7 @@ class Game {
       hand.splice(idx, 1);
     }
     this.currentTrick = { combo, cards, playerIdx };
+    this.handPlayCount++;
     this.passesInRow = 0;
     this.log.push(`P${playerIdx} plays ${cards.map(cardLabel).join(' ')} (${combo.type})`);
     if (hand.length === 0){
@@ -475,6 +558,7 @@ class Game {
   }
 
   passTurn(playerIdx){
+    if (this.tributePending()) return { ok: false, reason: 'tribute-pending' };
     if (!this.currentTrick) return { ok: false, reason: 'cannot-pass-when-leading' };
     this.passesInRow++;
     this.log.push(`P${playerIdx} passes`);
@@ -519,12 +603,14 @@ class Game {
         this.turn = winner;
       }
       this.leader = this.turn;
+      this.trickJustCleared = true;
     } else {
       this.turn = this.nextActive(playerIdx);
     }
   }
 
   endHand(){
+    if (this.handOver) return;
     this.handOver = true;
     const actualFinishCount = this.finishedOrder.length; // before padding
     // whoever hasn't finished is last place (padded on for scoring/display purposes only)
@@ -532,7 +618,6 @@ class Game {
     const [p1, p2, p3] = this.finishedOrder;
     const t1 = this.teamOf(p1), t2 = this.teamOf(p2);
     const winTeam = t1;
-    const loseTeam = 1 - t1;
     let upgrade;
     if (t2 === winTeam) upgrade = 3; // teammate finished 2nd (double-down)
     else {
@@ -540,11 +625,26 @@ class Game {
       if (p3team === winTeam) upgrade = 2; // teammate finished 3rd
       else upgrade = 1; // teammate finished last
     }
+    const wasOwnAce = this.handBankerTeam === winTeam && this.handLevelRank === 'A';
+    const previousLevel = this.teamLevel[winTeam];
+    const aceFailureCount = wasOwnAce && upgrade === 1 ? this.ace14Streak[winTeam] + 1 : 0;
+    this.ace14Streak = [0, 0]; // Only uninterrupted 1–4 wins at one's own Ace count.
+    const resetToTwo = aceFailureCount === 3;
+    const passedAce = wasOwnAce && upgrade >= 2;
+    if (aceFailureCount){
+      this.teamLevel[winTeam] = resetToTwo ? 0 : 12;
+      this.ace14Streak[winTeam] = resetToTwo ? 0 : aceFailureCount;
+    } else {
+      this.teamLevel[winTeam] = Math.min(12, previousLevel + upgrade);
+    }
     this.bankerTeam = winTeam;
-    this.teamLevel[winTeam] = this.teamLevel[winTeam] + upgrade;
-    this.lastResult = { finishedOrder: this.finishedOrder.slice(), actualFinishCount, winTeam, upgrade };
-    this.log.push(`Hand over. Finish order: ${this.finishedOrder.join(',')}. Team ${winTeam} upgrades by ${upgrade}.`);
-    if (this.teamLevel[winTeam] >= LEVEL_ORDER.length){
+    this.lastResult = {
+      finishedOrder: this.finishedOrder.slice(), actualFinishCount, winTeam, upgrade,
+      levelGain: this.teamLevel[winTeam] - previousLevel,
+      levelAfter: LEVEL_ORDER[this.teamLevel[winTeam]], aceFailureCount, resetToTwo, passedAce,
+    };
+    this.log.push(`Hand over. Finish order: ${this.finishedOrder.join(',')}. Team ${winTeam}: ${resetToTwo ? 'three consecutive 1–4 wins at Ace; drops to 2' : aceFailureCount ? `1–4 win at Ace (${aceFailureCount}/3); stays at Ace` : `level ${this.lastResult.levelAfter}`}.`);
+    if (passedAce){
       this.gameOver = true;
       this.winner = winTeam;
       this.log.push(`Team ${winTeam} wins the game!`);
