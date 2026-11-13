@@ -13,12 +13,8 @@ use std::{
     time::{Duration, Instant},
 };
 
-const INK: Color32 = Color32::from_rgb(15, 25, 24);
-const FELT: Color32 = Color32::from_rgb(14, 54, 44);
-const GOLD: Color32 = Color32::from_rgb(218, 181, 104);
-const CREAM: Color32 = Color32::from_rgb(242, 235, 217);
-const MUTED: Color32 = Color32::from_rgb(167, 185, 170);
-const RED: Color32 = Color32::from_rgb(166, 47, 48);
+mod theme;
+use theme::{CANVAS, CARD_TOP, ERROR, HAIRLINE, ICE, OBSIDIAN, PEWTER, SILVER};
 
 #[derive(Clone, Copy)]
 struct Layout {
@@ -42,6 +38,7 @@ impl Layout {
     }
     fn apply(self, ctx: &egui::Context) {
         ctx.style_mut(|s| {
+            s.visuals = theme::visuals();
             s.spacing.item_spacing = Vec2::new(8.0 * self.scale, 6.0 * self.scale);
             s.spacing.button_padding = Vec2::new(10.0 * self.scale, 6.0 * self.scale);
             s.spacing.interact_size.y = 28.0 * self.scale;
@@ -53,14 +50,14 @@ impl Layout {
                 (egui::TextStyle::Small, 11.0),
             ] {
                 s.text_styles
-                    .insert(style, FontId::proportional(size * self.scale));
+                    .insert(style, theme::label_font(size * self.scale));
             }
         });
     }
 }
 
 fn control(ui: &mut egui::Ui, key: &'static str, label: &str, enabled: bool) -> egui::Response {
-    let response = ui.add_enabled(enabled, egui::Button::new(label));
+    let response = theme::ghost_button(ui, label, enabled);
     // Geometry assertions exercise the real widgets, including their clipping region.
     #[cfg(test)]
     ui.ctx().data_mut(|d| {
@@ -135,13 +132,8 @@ pub struct GuandanApp {
 
 impl GuandanApp {
     pub fn new(cc: &eframe::CreationContext<'_>, demo: bool) -> Self {
-        let mut visuals = egui::Visuals::dark();
-        visuals.panel_fill = INK;
-        visuals.override_text_color = Some(CREAM);
-        visuals.selection.bg_fill = GOLD.gamma_multiply(0.35);
-        visuals.widgets.active.bg_fill = Color32::from_rgb(70, 91, 67);
-        visuals.widgets.hovered.bg_fill = Color32::from_rgb(45, 73, 61);
-        cc.egui_ctx.set_visuals(visuals);
+        theme::install_fonts(&cc.egui_ctx);
+        cc.egui_ctx.set_visuals(theme::visuals());
         cc.egui_ctx.style_mut(|s| {
             s.spacing.item_spacing = Vec2::new(10.0, 9.0);
             s.spacing.button_padding = Vec2::new(15.0, 9.0);
@@ -307,24 +299,25 @@ impl GuandanApp {
     fn home(&mut self, ctx: &egui::Context) {
         let layout = Layout::for_size(ctx.screen_rect().size());
         egui::CentralPanel::default()
-            .frame(egui::Frame::new().fill(INK).inner_margin(layout.margin))
+            .frame(egui::Frame::new().fill(CANVAS).inner_margin(layout.margin))
             .show(ctx, |ui| {
+                theme::slate(ui.painter(), ctx.screen_rect(), 0.0);
                 egui::ScrollArea::vertical().id_salt("lobby-scroll").auto_shrink([false,false]).show(ui, |ui| {
                     ui.add_space(if layout.narrow { 8.0 } else { 20.0 });
                     ui.vertical_centered(|ui| {
-                        ui.label(RichText::new("GUANDAN").size(if layout.narrow {28.0} else {40.0}).color(GOLD).strong());
-                        ui.label("A table for four. Wherever your friends are.");
+                        theme::wordmark(ui, if layout.narrow {28.0} else {40.0});
+                        ui.label(RichText::new("A table for four. Wherever your friends are.").color(PEWTER));
                     });
                     ui.add_space(12.0);
                     let width=ui.available_width().min(820.0);
                     ui.vertical_centered(|ui| {
                         ui.allocate_ui_with_layout(Vec2::new(width,0.0),egui::Layout::top_down(egui::Align::Min),|ui| {
                             ui.label("Your name");
-                            ui.add(egui::TextEdit::singleline(&mut self.settings.name).char_limit(20).desired_width(ui.available_width()));
+                            theme::input(ui, egui::TextEdit::singleline(&mut self.settings.name).char_limit(20).desired_width(ui.available_width()));
                             ui.add_space(8.0);
-                            egui::Frame::group(ui.style()).inner_margin(12.0).show(ui,|ui| {
+                            theme::container().show(ui,|ui| {
                                 ui.set_width(ui.available_width());
-                                ui.heading("Play on this computer");
+                                ui.label(RichText::new("Play on this computer").heading().color(SILVER));
                                 ui.label("A fresh game with three bots. Works entirely offline.");
                                 if control(ui,"solo","Start solo game",true).clicked() {self.start_host(true);}
                             });
@@ -337,8 +330,8 @@ impl GuandanApp {
                                 ui.columns(2,|columns| {self.host_form(&mut columns[0]);self.join_form(&mut columns[1]);});
                             }
                             ui.add_space(8.0);
-                            ui.label(RichText::new("Empty seats are bots. Friends can take an open seat at any time.").color(MUTED));
-                            if let Some(error)=&self.error {ui.colored_label(Color32::LIGHT_RED,error);}
+                            ui.label(RichText::new("Empty seats are bots. Friends can take an open seat at any time.").color(PEWTER));
+                            if let Some(error)=&self.error {ui.colored_label(ERROR,error);}
                             if control(ui,"lobby-rules","Read the table rules",true).clicked() {self.show_rules=true;}
                         });
                     });
@@ -346,80 +339,105 @@ impl GuandanApp {
             });
     }
     fn host_form(&mut self, ui: &mut egui::Ui) {
-        egui::Frame::group(ui.style())
-            .inner_margin(12.0)
-            .show(ui, |ui| {
-                ui.set_width(ui.available_width());
-                ui.heading("Host a table");
-                ui.label("Friends join you through Tailscale or your LAN.");
-                ui.horizontal_wrapped(|ui| {
-                    ui.label("TCP port");
-                    ui.add(egui::DragValue::new(&mut self.settings.port).range(1024..=65535));
-                });
-                ui.label("Your Tailscale IP (for invitations)");
-                ui.add(
-                    egui::TextEdit::singleline(&mut self.settings.tailnet_ip)
-                        .hint_text("100.x.y.z")
-                        .desired_width(ui.available_width()),
-                );
-                ui.horizontal_wrapped(|ui| {
-                    if control(
-                        ui,
-                        "detect-ip",
-                        "Detect Tailscale IP",
-                        self.discovery.is_none(),
-                    )
-                    .clicked()
-                    {
-                        self.detect_ip();
-                    }
-                    if control(ui, "host", "Host game", true).clicked() {
-                        self.start_host(false);
-                    }
-                });
+        theme::container().show(ui, |ui| {
+            ui.set_width(ui.available_width());
+            ui.label(RichText::new("Host a table").heading().color(SILVER));
+            ui.label("Friends join you through Tailscale or your LAN.");
+            ui.horizontal_wrapped(|ui| {
+                ui.label("TCP port");
+                ui.add(egui::DragValue::new(&mut self.settings.port).range(1024..=65535));
             });
-    }
-    fn join_form(&mut self, ui: &mut egui::Ui) {
-        egui::Frame::group(ui.style())
-            .inner_margin(12.0)
-            .show(ui, |ui| {
-                ui.set_width(ui.available_width());
-                ui.heading("Join friends");
-                ui.label("Enter the host's address or paste an invitation.");
-                ui.label("Host address");
-                ui.add(
-                    egui::TextEdit::singleline(&mut self.settings.address)
-                        .hint_text("100.x.y.z:3000")
-                        .desired_width(ui.available_width()),
-                );
-                ui.label(
-                    RichText::new("Everyone runs this desktop app and connects to Tailscale.")
-                        .color(MUTED)
-                        .small(),
-                );
-                if control(ui, "join", "Join game", true).clicked() {
-                    self.settings.save();
-                    self.connect(self.settings.address.clone());
+            ui.label("Your Tailscale IP (for invitations)");
+            theme::input(
+                ui,
+                egui::TextEdit::singleline(&mut self.settings.tailnet_ip)
+                    .font(egui::TextStyle::Monospace)
+                    .hint_text("100.x.y.z")
+                    .desired_width(ui.available_width()),
+            );
+            ui.horizontal_wrapped(|ui| {
+                if control(
+                    ui,
+                    "detect-ip",
+                    "Detect Tailscale IP",
+                    self.discovery.is_none(),
+                )
+                .clicked()
+                {
+                    self.detect_ip();
+                }
+                if control(ui, "host", "Host game", true).clicked() {
+                    self.start_host(false);
                 }
             });
+        });
+    }
+    fn join_form(&mut self, ui: &mut egui::Ui) {
+        theme::container().show(ui, |ui| {
+            ui.set_width(ui.available_width());
+            ui.label(RichText::new("Join friends").heading().color(SILVER));
+            ui.label("Enter the host's address or paste an invitation.");
+            ui.label("Host address");
+            theme::input(
+                ui,
+                egui::TextEdit::singleline(&mut self.settings.address)
+                    .font(egui::TextStyle::Monospace)
+                    .hint_text("100.x.y.z:3000")
+                    .desired_width(ui.available_width()),
+            );
+            ui.label(
+                RichText::new("Everyone runs this desktop app and connects to Tailscale.")
+                    .color(PEWTER)
+                    .small(),
+            );
+            if control(ui, "join", "Join game", true).clicked() {
+                self.settings.save();
+                self.connect(self.settings.address.clone());
+            }
+        });
     }
     fn header(&mut self, ctx: &egui::Context, view: &View) {
         let layout = Layout::for_size(ctx.screen_rect().size());
         egui::TopBottomPanel::top("header")
-            .frame(egui::Frame::new().fill(INK).inner_margin(layout.margin))
+            .frame(
+                egui::Frame::new()
+                    .fill(OBSIDIAN)
+                    .stroke(Stroke::new(1.0_f32, HAIRLINE))
+                    .inner_margin(layout.margin),
+            )
             .show(ctx, |ui| {
                 ui.horizontal_wrapped(|ui| {
+                    theme::wordmark(ui, if layout.narrow { 18.0 } else { 23.0 });
                     ui.label(
-                        RichText::new("GUANDAN")
-                            .size(if layout.narrow { 18.0 } else { 23.0 })
-                            .strong()
-                            .color(GOLD),
+                        RichText::new(format!("Team A · {}", rank_label(view.team_levels[0])))
+                            .color(ICE)
+                            .font(FontId::proportional(14.0 * layout.scale)),
                     );
-                    ui.label(format!("Team A · {}", rank_label(view.team_levels[0])));
-                    ui.label(format!("Team B · {}", rank_label(view.team_levels[1])));
                     ui.label(
-                        RichText::new(format!("Wild · {}♥", rank_label(view.level))).color(GOLD),
+                        RichText::new(format!("Team B · {}", rank_label(view.team_levels[1])))
+                            .color(ICE)
+                            .font(FontId::proportional(14.0 * layout.scale)),
                     );
+                    let mut wild = egui::text::LayoutJob::default();
+                    let format = egui::TextFormat {
+                        font_id: FontId::proportional(14.0 * layout.scale),
+                        color: SILVER,
+                        ..Default::default()
+                    };
+                    wild.append(
+                        &format!("Wild · {} ", rank_label(view.level)),
+                        0.0,
+                        format.clone(),
+                    );
+                    wild.append(
+                        "♥",
+                        0.0,
+                        egui::TextFormat {
+                            color: ICE,
+                            ..format
+                        },
+                    );
+                    ui.label(wild);
                     if control(
                         ui,
                         "log-toggle",
@@ -460,7 +478,7 @@ impl GuandanApp {
                             "Offline"
                         })
                         .small()
-                        .color(MUTED),
+                        .color(PEWTER),
                     );
                 });
                 if let Some(host) = &self.host {
@@ -476,7 +494,7 @@ impl GuandanApp {
                                 egui::Label::new(
                                     RichText::new(format!("On your tailnet: {invitation}"))
                                         .small()
-                                        .color(MUTED),
+                                        .color(PEWTER),
                                 )
                                 .wrap(),
                             );
@@ -493,7 +511,7 @@ impl GuandanApp {
         let layout = Layout::for_size(screen);
         egui::TopBottomPanel::bottom("hand")
             .max_height(screen.y*0.68)
-            .frame(egui::Frame::new().fill(INK).inner_margin(layout.margin))
+            .frame(egui::Frame::new().fill(OBSIDIAN).inner_margin(layout.margin))
             .show(ctx,|ui| {
                 let mine=view.your_seat;
                 let your_turn=self.connected && view.phase==Phase::Playing && view.turn==mine && mine.is_some();
@@ -503,21 +521,21 @@ impl GuandanApp {
                     if view.show_tribute {
                         if let Some(t)=&view.tribute {
                             let who=|s:usize| if Some(s)==mine {"you".to_string()} else {view.seats[s].name.clone()};
-                            if t.rebellion {ui.colored_label(GOLD,format!("Tribute rebellion · no exchange · {} leads",who(t.leader)));}
+                            if t.rebellion {ui.colored_label(SILVER,format!("Tribute rebellion · no exchange · {} leads",who(t.leader)));}
                             else if returning {
                                 let e=t.exchanges.iter().find(|e|Some(e.to)==mine).unwrap();
                                 let low=view.your_hand.iter().any(|c|view.return_options.contains(&c.uid) && c.rank!=view.level && (2..=9).contains(&c.rank));
-                                ui.colored_label(GOLD,format!("You received {} from {}. {}",e.tribute,who(e.from),if low {"Choose a highlighted non-trump 2–9 to return."} else {"No eligible 2–9: return your highlighted lowest non-wild card."}));
-                            } else if !t.complete {ui.colored_label(GOLD,"Waiting for the other tribute recipients to choose their returns…");}
-                            else {ui.colored_label(GOLD,format!("Tribute exchange complete · {} leads",who(t.leader)));}
-                            ui.label(RichText::new(t.exchanges.iter().map(|e|format!("{} → {}: {}{}",who(e.from),who(e.to),e.tribute,e.returned.map_or(String::new(),|c|format!(" · returned {c}")))).collect::<Vec<_>>().join("     ")).small().color(MUTED));
+                                ui.colored_label(SILVER,format!("You received {} from {}. {}",e.tribute,who(e.from),if low {"Choose a highlighted non-trump 2–9 to return."} else {"No eligible 2–9: return your highlighted lowest non-wild card."}));
+                            } else if !t.complete {ui.colored_label(SILVER,"Waiting for the other tribute recipients to choose their returns…");}
+                            else {ui.colored_label(SILVER,format!("Tribute exchange complete · {} leads",who(t.leader)));}
+                            ui.label(RichText::new(t.exchanges.iter().map(|e|format!("{} → {}: {}{}",who(e.from),who(e.to),e.tribute,e.returned.map_or(String::new(),|c|format!(" · returned {c}")))).collect::<Vec<_>>().join("     ")).small().color(PEWTER));
                         }
                     }
                     ui.horizontal_wrapped(|ui| {
-                        ui.label(RichText::new(format!("YOUR HAND · {} cards",view.your_hand.len())).small().color(MUTED));
-                        ui.label(status_text(view));
+                        ui.label(RichText::new(format!("YOUR HAND · {} cards",view.your_hand.len())).small().color(PEWTER));
+                        ui.label(RichText::new(status_text(view)).color(if your_turn {ICE} else {SILVER}).font(FontId::proportional(14.0*layout.scale)));
                     });
-                    if let Some(error)=&self.error {ui.colored_label(Color32::LIGHT_RED,error);}
+                    if let Some(error)=&self.error {ui.colored_label(ERROR,error);}
                     if !self.connected && !self.demo {ui.small("The host must remain running. Rejoining takes an open seat.");}
                 });
                 let card_size=Vec2::new(layout.card_height*51.0/76.0,layout.card_height);
@@ -565,7 +583,7 @@ impl GuandanApp {
     fn table(&mut self, ctx: &egui::Context, view: &View) {
         let layout = Layout::for_size(ctx.screen_rect().size());
         egui::CentralPanel::default()
-            .frame(egui::Frame::new().fill(FELT).inner_margin(layout.margin))
+            .frame(egui::Frame::new().fill(CANVAS).inner_margin(layout.margin))
             .show(ctx, |ui| {
                 egui::ScrollArea::vertical()
                     .id_salt("table-scroll")
@@ -607,7 +625,10 @@ impl GuandanApp {
                         ));
                     }
                     if result.reset_to_two {
-                        ui.colored_label(GOLD, "Three consecutive 1–4 Ace wins: back to level 2.");
+                        ui.colored_label(
+                            SILVER,
+                            "Three consecutive 1–4 Ace wins: back to level 2.",
+                        );
                     } else if result.ace_failures > 0 {
                         ui.label(format!(
                             "Stays at Ace · {} / 3 consecutive 1–4 wins",
@@ -670,6 +691,12 @@ impl GuandanApp {
             let floating_log = size.x < 960.0;
             if self.show_log && !floating_log {
                 egui::SidePanel::right("log")
+                    .frame(
+                        egui::Frame::new()
+                            .fill(OBSIDIAN)
+                            .stroke(Stroke::new(1.0_f32, HAIRLINE))
+                            .inner_margin(10.0),
+                    )
                     .default_width(250.0)
                     .min_width(180.0)
                     .max_width((size.x * 0.28).min(320.0))
@@ -696,7 +723,7 @@ impl GuandanApp {
                         ui.add_space((size.y * 0.15).min(60.0));
                         ui.heading(&self.status);
                         if let Some(error) = &self.error {
-                            ui.colored_label(Color32::LIGHT_RED, error);
+                            ui.colored_label(ERROR, error);
                         }
                         if control(ui, "back", "Back", true).clicked() {
                             self.leave();
@@ -728,23 +755,49 @@ fn paint_table(ui: &mut egui::Ui, view: &View) {
     let sx = r.width() / 900.0;
     let sy = r.height() / 440.0;
     let scale = sx.min(sy).min(1.0);
+    let surface = r.shrink(2.0);
+    let radius = 4.0 * scale;
+    theme::slate(p, surface, radius);
     p.rect_stroke(
-        r.shrink(2.0),
-        20.0 * scale,
-        Stroke::new(1.0_f32, GOLD.gamma_multiply(0.25)),
+        surface,
+        radius,
+        Stroke::new(1.0_f32, HAIRLINE),
         egui::StrokeKind::Inside,
     );
-    p.circle_stroke(
-        center,
-        r.height().min(r.width()) * 0.28,
-        Stroke::new(1.0_f32, GOLD.gamma_multiply(0.10)),
-    );
+    theme::engrave(p, surface, 24.0 * scale.max(0.65));
+    // Recess the slate with dark inner edges instead of a colored felt rail.
+    for inset in 1..=3 {
+        p.rect_stroke(
+            surface.shrink(inset as f32),
+            (radius - inset as f32).max(0.0),
+            Stroke::new(1.0_f32, Color32::from_black_alpha(65 / inset)),
+            egui::StrokeKind::Inside,
+        );
+    }
+    let radius = r.height().min(r.width()) * 0.25;
+    p.add(egui::Shape::closed_line(
+        vec![
+            center - Vec2::new(0.0, radius),
+            center + Vec2::new(radius, 0.0),
+            center + Vec2::new(0.0, radius),
+            center - Vec2::new(radius, 0.0),
+        ],
+        Stroke::new(1.0_f32, Color32::from_rgb(36, 55, 80)),
+    ));
     let mine = view.your_seat.unwrap_or(0);
     for (offset, pos, role) in [
-        (2, Pos2::new(center.x, r.top() + 33.0 * sy), "PARTNER"),
+        (
+            2,
+            Pos2::new(center.x, r.top() + (33.0 * sy).max(26.0)),
+            "PARTNER",
+        ),
         (3, Pos2::new(r.left() + 66.0 * sx, center.y), "OPPONENT"),
         (1, Pos2::new(r.right() - 66.0 * sx, center.y), "OPPONENT"),
-        (0, Pos2::new(center.x, r.bottom() - 31.0 * sy), "YOU"),
+        (
+            0,
+            Pos2::new(center.x, r.bottom() - (31.0 * sy).max(26.0)),
+            "YOU",
+        ),
     ] {
         let seat = (mine + offset) % 4;
         let label = if r.width() < 650.0 {
@@ -774,7 +827,7 @@ fn paint_table(ui: &mut egui::Ui, view: &View) {
         (
             2,
             Rect::from_center_size(
-                Pos2::new(center.x, r.top() + 109.0 * sy),
+                Pos2::new(center.x, r.top() + (109.0 * sy).max(70.0)),
                 Vec2::new(330.0 * sx, side_height),
             ),
         ),
@@ -798,7 +851,7 @@ fn paint_table(ui: &mut egui::Ui, view: &View) {
         (
             0,
             Rect::from_center_size(
-                Pos2::new(center.x, r.bottom() - 102.0 * sy),
+                Pos2::new(center.x, r.bottom() - (102.0 * sy).max(70.0)),
                 Vec2::new(330.0 * sx, side_height),
             ),
         ),
@@ -820,7 +873,7 @@ fn paint_table(ui: &mut egui::Ui, view: &View) {
                 Align2::CENTER_CENTER,
                 "Pass",
                 FontId::proportional((15.0 * scale).max(9.0)),
-                MUTED,
+                PEWTER,
             );
         }
     }
@@ -836,7 +889,7 @@ fn paint_table(ui: &mut egui::Ui, view: &View) {
                 "A fresh trick"
             },
             FontId::proportional((16.0 * scale).max(10.0)),
-            MUTED,
+            PEWTER,
         );
     }
 }
@@ -877,9 +930,9 @@ fn draw_seat(
     scale: f32,
     max_name_width: f32,
 ) {
-    let gap = (19.0 * scale).max(10.0);
-    let name_font = FontId::proportional((15.0 * scale).max(10.0));
-    let color = if active { GOLD } else { CREAM };
+    let gap = (21.0 * scale).max(13.0);
+    let name_font = theme::label_font((16.0 * scale).max(11.0));
+    let color = if active { ICE } else { SILVER };
     let mut name = seat.name.clone();
     let mut count = name.chars().count();
     while count > 0
@@ -895,8 +948,8 @@ fn draw_seat(
         pos - Vec2::new(0.0, gap),
         Align2::CENTER_CENTER,
         role,
-        FontId::proportional((10.0 * scale).max(8.0)),
-        MUTED,
+        theme::label_font((11.0 * scale).max(9.0)),
+        PEWTER,
     );
     p.text(pos, Align2::CENTER_CENTER, name, name_font, color);
     p.text(
@@ -908,14 +961,20 @@ fn draw_seat(
             if seat.bot { " · bot" } else { "" }
         ),
         FontId::proportional((11.0 * scale).max(8.0)),
-        MUTED,
+        PEWTER,
     );
     if active {
-        p.circle_filled(
-            pos - Vec2::new((max_name_width / 2.0).min(38.0) + 4.0, 0.0),
-            2.5,
-            GOLD,
-        );
+        let gem = pos - Vec2::new((max_name_width / 2.0).min(38.0) + 4.0, 0.0);
+        p.add(egui::Shape::convex_polygon(
+            vec![
+                gem - Vec2::new(0.0, 4.0),
+                gem + Vec2::new(3.0, 0.0),
+                gem + Vec2::new(0.0, 4.0),
+                gem - Vec2::new(3.0, 0.0),
+            ],
+            ICE,
+            Stroke::new(0.6_f32, SILVER),
+        ));
     }
 }
 fn draw_play(
@@ -940,7 +999,7 @@ fn draw_play(
                 Pos2::new(area.center().x + width / 2.0 + 4.0, card_top + size.y + 4.0),
             ),
             6.0,
-            Stroke::new(1.0_f32, GOLD),
+            Stroke::new(1.0_f32, PEWTER),
             egui::StrokeKind::Inside,
         );
     }
@@ -949,7 +1008,7 @@ fn draw_play(
         Align2::CENTER_CENTER,
         label,
         FontId::proportional((10.0 * scale).max(8.0)),
-        if winning { GOLD } else { MUTED },
+        if winning { SILVER } else { PEWTER },
     );
     for (i, c) in cards.iter().enumerate() {
         let rect = Rect::from_min_size(
@@ -973,12 +1032,20 @@ fn draw_card(
     dim: bool,
 ) {
     let scale = card_scale(r.size());
-    let fill = if dim {
-        Color32::from_rgb(125, 139, 126)
+    let top = if dim {
+        Color32::from_rgb(20, 22, 25)
+    } else if selected {
+        Color32::from_rgb(26, 57, 98)
     } else {
-        CREAM
+        CARD_TOP
     };
-    p.rect_filled(r, 5.0, fill);
+    p.add(theme::surface(r, 5.0, top, OBSIDIAN));
+    p.rect_stroke(
+        r.shrink(1.0),
+        4.0,
+        Stroke::new(1.0_f32, Color32::from_black_alpha(90)),
+        egui::StrokeKind::Inside,
+    );
     p.rect_stroke(
         r,
         5.0,
@@ -988,15 +1055,24 @@ fn draw_card(
             } else {
                 1.0_f32
             },
-            if selected || eligible {
-                GOLD
-            } else {
-                Color32::from_rgb(190, 184, 163)
-            },
+            if selected || eligible { ICE } else { HAIRLINE },
         ),
         egui::StrokeKind::Inside,
     );
-    let ink = if c.is_red() { RED } else { INK };
+    let ink = if dim {
+        Color32::from_rgb(101, 108, 117)
+    } else {
+        SILVER
+    };
+    let suit_ink = if dim {
+        ink
+    } else if c.is_wild(level) {
+        Color32::from_rgb(191, 219, 254)
+    } else if c.is_red() {
+        ICE
+    } else {
+        ink
+    };
     // A standard corner index remains visible when cards overlap from the right.
     p.text(
         r.left_top() + Vec2::new(4.0, 4.0) * scale,
@@ -1018,7 +1094,7 @@ fn draw_card(
         Align2::LEFT_TOP,
         if c.is_joker() { "J" } else { c.suit_label() },
         FontId::proportional(19.0 * scale),
-        ink,
+        suit_ink,
     );
     if c.is_joker() {
         p.text(
@@ -1041,7 +1117,7 @@ fn draw_card(
             Align2::RIGHT_BOTTOM,
             c.suit_label(),
             FontId::proportional(19.0 * scale),
-            ink,
+            suit_ink,
         );
         if c.rank == level && r.width() >= 29.0 {
             p.text(
@@ -1049,7 +1125,7 @@ fn draw_card(
                 Align2::CENTER_CENTER,
                 if c.is_wild(level) { "WILD" } else { "LEVEL" },
                 FontId::proportional((8.0 * scale).max(6.0)),
-                ink,
+                if dim { ink } else { PEWTER },
             );
         }
     }
@@ -1127,6 +1203,7 @@ mod responsive_tests {
         size: Vec2,
         events: Vec<egui::Event>,
     ) -> egui::FullOutput {
+        theme::install_fonts(ctx);
         let time = ctx.input(|i| i.time) + 1.0 / 60.0;
         ctx.run(
             egui::RawInput {

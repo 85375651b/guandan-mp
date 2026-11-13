@@ -21,7 +21,7 @@ previewed beside the controls. Pass is available when following a play.
 Rank and suit appear on each card's left edge, visible when cards overlap.
 Scroll the hand sideways if it does not fit the window.
 Your cards appear in front of you; other plays appear in front of their owners.
-A gold outline marks the current winning play. The play log has a Close button;
+A silver outline marks the current winning play. The play log has a Close button;
 Escape closes the log and rules windows.
 
 FINISHING AND ACE

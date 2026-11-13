@@ -106,8 +106,11 @@ provides working OpenGL.
 
 The enabled backends load display/graphics libraries at runtime, so `ldd` alone
 does not list all of them. GUI `*-devel` packages were not needed for the verified
-build with the current feature selection. Fonts are bundled by eframe; there is
-no external font download. The build does not require GTK, Qt, WebKit, SDL,
+build with the current feature selection. Default font fallbacks are bundled by
+eframe; Cinzel is embedded from `assets/fonts/Cinzel-Variable.ttf` for
+the Diamond Vault interface, with its SIL Open Font License 1.1 and attribution included
+in that directory. There is no runtime font download or required system font
+installation. The build does not require GTK, Qt, WebKit, SDL,
 OpenSSL development headers, CMake, Node.js, or npm.
 
 If a Wayland session/driver has trouble, run through an available X11/Xwayland

@@ -35,8 +35,18 @@ on loopback, on an available port. You receive a fresh hand with three bots.
 
 Click cards to select them, then **Play selected**, or **Pass** when following.
 The selected combination is previewed beside the controls. Played cards sit in
-front of their owners; a gold outline marks the current winning play. The log
+front of their owners; a silver outline marks the current winning play. The log
 has a Close button, and Escape closes the log and rules windows.
+
+The Diamond Vault interface pairs faceted sapphire artwork with blurred navy
+glass panels, platinum borders, engraved corners, recessed inputs, and blue
+gradient controls. Cinzel's engraved Roman serif typography is embedded in the executable.
+Card indices retain a clear, simple face; hearts and diamonds use ice blue,
+with brighter wildcard hearts. There are no warm or gold accents.
+The palette and controls live in [src/app/theme.rs](src/app/theme.rs); procedural
+artwork and cached glass blur are in [backdrop.rs](src/app/theme/backdrop.rs).
+The bundled font and its SIL Open Font License are in [assets/fonts](assets/fonts).
+No extra font installation or Rust dependency is required.
 
 The interface adapts to window size, down to 420×340 logical pixels. Buttons
 wrap, cards shrink to fit the hand, and the lobby stacks into one column in
@@ -189,6 +199,8 @@ only when building with the `screenshot` feature).
 - `src/table.rs`: authoritative seats, bot timers, per-client public/private views.
 - `src/net.rs`: background TCP hosting/client connections and versioned protocol.
 - `src/app.rs`, `src/main.rs`: the native graphical application.
+- `src/app/theme.rs`, `src/app/theme/backdrop.rs`: Diamond Vault styling, serif typography, sapphire facets, and cached glass blur.
+- `assets/fonts/`: embedded Cinzel and its license/notice.
 - `tests/`: game, migration parity, and real network tests.
 - `legacy/`: the previous web application, preserved for reference. It is not
   compiled or launched by Cargo. Its Node tests remain runnable there.
