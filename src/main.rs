@@ -1,4 +1,6 @@
 fn main() -> eframe::Result {
+    let icon = eframe::icon_data::from_png_bytes(include_bytes!("../assets/icons/guandan.png"))
+        .expect("the bundled Guandan icon must be a valid PNG");
     let initial_size = [1000.0, 700.0];
     // Reproduce small windows in optional screenshot builds without changing
     // normal launch settings or resizing a live desktop window by hand.
@@ -15,6 +17,8 @@ fn main() -> eframe::Result {
     let options = eframe::NativeOptions {
         viewport: eframe::egui::ViewportBuilder::default()
             .with_title("Guandan · Native Table")
+            .with_app_id("guandan")
+            .with_icon(icon)
             .with_inner_size(initial_size)
             .with_min_inner_size([420.0, 340.0])
             .with_clamp_size_to_monitor_size(true),

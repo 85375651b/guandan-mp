@@ -38,6 +38,22 @@ The selected combination is previewed beside the controls. Played cards sit in
 front of their owners; a silver outline marks the current winning play. The log
 has a Close button, and Escape closes the log and rules windows.
 
+On your turn, **help** selects a suggested play using the bots' level 3 strategy,
+including public card counting, pass history, and partner awareness. The button
+changes to **cancel**, which clears the selection or cancels a pending request.
+You can adjust the selected cards, then confirm with **Play selected**. If the
+strategy recommends passing, a message appears beside the controls; choose
+**Pass** to confirm. Help works in both hand views, in solo and multiplayer.
+The host computes suggestions in the background. Host and guests must all use
+this updated build.
+
+Choose **see straight flushes** to arrange your hand in four suit rows with
+aligned columns from 2 through Ace. Empty slots make gaps easy to see; duplicate
+cards remain individually selectable. Wild hearts stay in the hearts row and
+can complete any suit. Jokers remain selectable in a separate column. Scroll the
+grid in small windows; the action buttons stay visible. **restore regular view**
+returns to the normal hand layout and keeps your selection.
+
 The Diamond Vault interface pairs faceted sapphire artwork with blurred navy
 glass panels, platinum borders, engraved corners, recessed inputs, and blue
 gradient controls. Cinzel's engraved Roman serif typography is embedded in the executable.
@@ -214,14 +230,23 @@ cargo run --release --no-default-features --locked --bin guandan-server -- 0.0.0
 Guests still join it using the desktop app. The normal **Host game** button
 already runs the same server internally; a separate server process is optional.
 
-## Optional desktop launcher
+## Desktop launcher and navy spade icon
 
-To add the game to your Linux application menu after compiling:
+The window icon is embedded in the executable. Wayland also looks up the icon
+through an installed desktop entry matching the application's ID. Build and
+install the game, launcher, and navy spade icon for your user:
 
 ```sh
-install -Dm755 target/release/guandan ~/.local/bin/guandan
-install -Dm644 packaging/guandan.desktop ~/.local/share/applications/guandan.desktop
+cargo build --release --locked --bin guandan
+sh packaging/install-desktop.sh
 ```
 
-The launcher expects `guandan` on your session's `PATH`. If `~/.local/bin` is
-not on it, set the launcher's `Exec` entry to the executable's absolute path.
+Relaunch the game after installation. The installer copies the binary to
+`~/.local/bin/guandan`, writes an absolute executable path into the launcher,
+and installs the launcher and icons beneath `$XDG_DATA_HOME` (normally
+`~/.local/share`). No root access or additional Rust dependency is needed.
+Rerun it after rebuilding to update the installed executable. To install a
+different build, pass its path, e.g. `sh packaging/install-desktop.sh target/debug/guandan`.
+Some desktops keep pinned shortcuts cached; unpin and repin Guandan if an old
+shortcut retains its previous icon. The original vector and bundled PNG are in
+`assets/icons/`.

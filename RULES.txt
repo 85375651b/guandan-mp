@@ -18,8 +18,16 @@ jokers. Bombs beat ordinary plays; four jokers beat everything.
 SELECTING CARDS
 Click cards in your hand, then Play selected. The selected combination is
 previewed beside the controls. Pass is available when following a play.
+On your turn, "help" selects a play using the bots' level 3 strategy. Confirm
+with Play selected, adjust the cards, or use "cancel" to clear the selection.
+If help recommends passing, choose Pass to confirm. Cancel also stops a pending
+help request. Help works in both the regular and straight flush views.
 Rank and suit appear on each card's left edge, visible when cards overlap.
 Scroll the hand sideways if it does not fit the window.
+Use "see straight flushes" for four suit rows, ordered by printed rank 2–A.
+Empty slots reveal missing ranks; wild hearts stay in the hearts row and can
+complete any suit. Jokers have a separate column. Scroll the grid if needed.
+"restore regular view" returns to the normal layout. Selection is preserved.
 Your cards appear in front of you; other plays appear in front of their owners.
 A silver outline marks the current winning play. The play log has a Close button;
 Escape closes the log and rules windows.

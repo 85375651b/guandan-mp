@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use std::time::{Duration, Instant};
 
-pub const PROTOCOL_VERSION: u16 = 1;
+pub const PROTOCOL_VERSION: u16 = 2;
 pub type Peer = u64;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -15,6 +15,7 @@ pub enum Command {
     Play { hand_id: u64, cards: Vec<u8> },
     Pass { hand_id: u64 },
     Return { hand_id: u64, card: u8 },
+    Hint { hand_id: u64, request_id: u64 },
     NewGame,
     Ping,
 }
@@ -306,14 +307,135 @@ mod tests {
         );
         assert_eq!(t.game.hands[1].len(), 5);
     }
+
+    #[test]
+    fn help_uses_level_three_without_changing_the_table_or_reading_hidden_cards() {
+        let mut t = Table::default();
+        join(&mut t, 1, Instant::now());
+        let deck = deck();
+        t.game.hands[0] = deck
+            .iter()
+            .copied()
+            .filter(|c| {
+                c.uid < 54
+                    && (c.rank == 3
+                        || matches!(
+                            (c.rank, c.suit),
+                            (4, crate::cards::Suit::Spades)
+                                | (5, crate::cards::Suit::Diamonds)
+                                | (7, crate::cards::Suit::Clubs)
+                                | (9, crate::cards::Suit::Hearts)
+                        ))
+            })
+            .collect();
+        let played = Played {
+            seat: 1,
+            cards: deck
+                .iter()
+                .copied()
+                .filter(|c| c.rank == 14)
+                .take(2)
+                .collect(),
+            combo: crate::rules::classify(
+                &deck
+                    .iter()
+                    .copied()
+                    .filter(|c| c.rank == 14)
+                    .take(2)
+                    .collect::<Vec<_>>(),
+                2,
+            )
+            .unwrap(),
+        };
+        t.game.hands[1].truncate(1);
+        t.game.hands[2].truncate(20);
+        t.game.hands[3].truncate(20);
+        t.game.turn = Some(0);
+        t.game.trick = Some(played.clone());
+        t.game.history = vec![crate::game::PublicAction::Play(played)];
+        // This position distinguishes the level 3 policy from level 2: stop
+        // the one-card opponent from regaining the lead after their pair wins.
+        assert!(crate::bot::choose_move(
+            &t.game.hands[0],
+            2,
+            &Context {
+                seat: 0,
+                counts: [8, 1, 20, 20],
+                trick: t.game.trick.as_ref().map(|p| (p.seat, &p.combo)),
+            }
+        )
+        .is_none());
+        let before = serde_json::to_value(t.view(1)).unwrap();
+        let deadline = t.deadline;
+        let hint = t.hint(1, t.game.hand_id, 42);
+        assert_eq!(hint.request_id, 42);
+        assert_eq!(hint.revision, t.revision);
+        let uids = hint.cards.unwrap();
+        assert_eq!(uids.len(), 4);
+        assert!(uids
+            .iter()
+            .all(|uid| t.game.hands[0].iter().any(|c| c.uid == *uid && c.rank == 3)));
+        assert_eq!(serde_json::to_value(t.view(1)).unwrap(), before);
+        assert_eq!(t.deadline, deadline);
+        assert_eq!(t.game.history.len(), 1);
+        // Different hidden cards, identical public sizes and history.
+        let other = t.game.hands[3][0];
+        t.game.hands[3][0] = t.game.hands[1][0];
+        t.game.hands[1][0] = other;
+        assert_eq!(t.hint(1, t.game.hand_id, 43).cards.unwrap(), uids);
+        t.game.play(0, &uids).unwrap();
+    }
+
+    #[test]
+    fn help_can_recommend_a_pass_and_rejects_unavailable_turns() {
+        let mut t = Table::default();
+        join(&mut t, 1, Instant::now());
+        assert!(t.hint(99, t.game.hand_id, 1).cards.is_err());
+        assert!(t.hint(1, t.game.hand_id + 1, 1).cards.is_err());
+        t.game.turn = Some(1);
+        assert!(t.hint(1, t.game.hand_id, 1).cards.is_err());
+        t.game.turn = Some(0);
+        t.game.hands[0] = deck()
+            .into_iter()
+            .filter(|c| {
+                (c.rank == 9 && c.suit == crate::cards::Suit::Spades && c.uid < 54)
+                    || (c.rank == 14 && c.suit == crate::cards::Suit::Diamonds && c.uid < 54)
+            })
+            .collect();
+        t.game.hands[2].clear();
+        let card = deck().into_iter().find(|c| c.rank == 4).unwrap();
+        t.game.trick = Some(Played {
+            seat: 2,
+            cards: vec![card],
+            combo: crate::rules::classify(&[card], 2).unwrap(),
+        });
+        let before = serde_json::to_value(t.view(1)).unwrap();
+        assert!(t.hint(1, t.game.hand_id, 1).cards.unwrap().is_empty());
+        assert_eq!(serde_json::to_value(t.view(1)).unwrap(), before);
+        t.game.hand_over = true;
+        assert!(t.hint(1, t.game.hand_id, 1).cards.is_err());
+        t.game.hand_over = false;
+        tribute(&mut t);
+        assert!(t.hint(1, t.game.hand_id, 1).cards.is_err());
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "type", content = "data", rename_all = "snake_case")]
 pub enum Message {
     State(Box<View>),
+    Hint(Hint),
     Error(String),
     Pong,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Hint {
+    pub request_id: u64,
+    pub hand_id: u64,
+    pub revision: u64,
+    /// An empty selection recommends passing. Errors are correlated to the request.
+    pub cards: Result<Vec<u8>, String>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -514,6 +636,9 @@ impl Table {
                 }
                 Command::Join { .. } => unreachable!(),
                 Command::Ping => unreachable!(),
+                Command::Hint { .. } => {
+                    return Err("Help requests do not change the table.".into());
+                }
             }
         }
         self.revision += 1;
@@ -526,6 +651,40 @@ impl Table {
         } else {
             Err("That action belongs to a previous hand. Select your cards again.".into())
         }
+    }
+    /// Run the same level 3 policy as a bot, using only this player's cards,
+    /// public hand sizes, and the deal's public action history.
+    pub fn hint(&self, peer: Peer, hand_id: u64, request_id: u64) -> Hint {
+        let cards = (|| {
+            self.check_hand(hand_id)?;
+            let seat = self
+                .seat_of(peer)
+                .ok_or("Join a seat before asking for help.")?;
+            if !self.game.legal_turn(seat) {
+                return Err("Help is available during your turn after tribute.".into());
+            }
+            Ok(self
+                .choice(seat)
+                .map_or_else(Vec::new, |m| m.cards.iter().map(|c| c.uid).collect()))
+        })();
+        Hint {
+            request_id,
+            hand_id,
+            revision: self.revision,
+            cards,
+        }
+    }
+    fn choice(&self, seat: usize) -> Option<crate::rules::Move> {
+        choose_move_with_history(
+            &self.game.hands[seat],
+            self.game.level,
+            &Context {
+                seat,
+                counts: self.game.hands.each_ref().map(Vec::len),
+                trick: self.game.trick.as_ref().map(|p| (p.seat, &p.combo)),
+            },
+            &self.game.history,
+        )
     }
     pub fn disconnect(&mut self, peer: Peer, now: Instant) -> bool {
         if let Some(seat) = self.seat_of(peer) {
@@ -568,17 +727,7 @@ impl Table {
             }
         } else if let Some(seat) = self.game.turn {
             if self.seats[seat].peer.is_none() {
-                let current = self.game.trick.as_ref();
-                let choice = choose_move_with_history(
-                    &self.game.hands[seat],
-                    self.game.level,
-                    &Context {
-                        seat,
-                        counts: self.game.hands.each_ref().map(Vec::len),
-                        trick: current.map(|p| (p.seat, &p.combo)),
-                    },
-                    &self.game.history,
-                );
+                let choice = self.choice(seat);
                 if let Some(m) = choice {
                     let _ = self
                         .game

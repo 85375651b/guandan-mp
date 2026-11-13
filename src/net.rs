@@ -177,6 +177,17 @@ fn serve(listener: TcpListener, stop: Arc<AtomicBool>) {
                             }
                             continue;
                         }
+                        if let Command::Hint {
+                            hand_id,
+                            request_id,
+                        } = command
+                        {
+                            let hint = table.hint(id, hand_id, request_id);
+                            if wire.queue(&Message::Hint(hint)).is_err() {
+                                gone.push(id);
+                            }
+                            continue;
+                        }
                         match table.apply(id, command, Instant::now()) {
                             Ok(()) => dirty = true,
                             Err(error) => {

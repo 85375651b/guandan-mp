@@ -1,8 +1,8 @@
 use crate::{
-    cards::{rank_label, Card},
+    cards::{rank_label, Card, Suit},
     net::{Connection, Event, ServerHandle},
     rules::classify,
-    table::{Command, Message, Phase, Table, View, PROTOCOL_VERSION},
+    table::{Command, Hint, Message, Phase, Table, View, PROTOCOL_VERSION},
 };
 use eframe::egui::{self, Align2, Color32, FontId, Pos2, Rect, RichText, Sense, Stroke, Vec2};
 use serde::{Deserialize, Serialize};
@@ -114,12 +114,40 @@ impl Settings {
     }
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum HelpStatus {
+    Pending,
+    Cards,
+    Pass,
+}
+
+#[derive(Clone, Copy)]
+struct PlayHelp {
+    request_id: u64,
+    hand_id: u64,
+    revision: u64,
+    seat: usize,
+    status: HelpStatus,
+}
+impl PlayHelp {
+    fn matches(&self, view: &View) -> bool {
+        view.hand_id == self.hand_id
+            && view.revision == self.revision
+            && view.your_seat == Some(self.seat)
+            && view.turn == Some(self.seat)
+            && view.phase == Phase::Playing
+    }
+}
+
 pub struct GuandanApp {
     settings: Settings,
     connection: Option<Connection>,
     host: Option<ServerHandle>,
     view: Option<View>,
     selected: BTreeSet<u8>,
+    help: Option<PlayHelp>,
+    next_help_request: u64,
+    straight_flush_view: bool,
     error: Option<String>,
     status: String,
     show_log: bool,
@@ -144,6 +172,9 @@ impl GuandanApp {
             host: None,
             view: None,
             selected: BTreeSet::new(),
+            help: None,
+            next_help_request: 0,
+            straight_flush_view: false,
             error: None,
             status: String::new(),
             show_log: false,
@@ -156,6 +187,11 @@ impl GuandanApp {
         if demo {
             app.view = Some(demo_view());
             app.status = "Preview · native interface".into();
+            #[cfg(feature = "screenshot")]
+            {
+                app.straight_flush_view =
+                    std::env::var_os("GUANDAN_SCREENSHOT_FLUSH_VIEW").is_some();
+            }
         } else if app.settings.tailnet_ip.is_empty() {
             app.detect_ip();
         }
@@ -217,33 +253,142 @@ impl GuandanApp {
                     self.status = "Connected · joining the table…".into();
                 }
                 Event::Disconnected(error) => {
+                    if self.help.is_some() {
+                        self.clear_selection();
+                    }
                     self.connected = false;
                     self.error = Some(error);
                     self.status = "Disconnected".into();
                 }
                 Event::Message(Message::Error(error)) => self.error = Some(error),
-                Event::Message(Message::State(view)) => {
-                    if self
-                        .view
-                        .as_ref()
-                        .is_none_or(|old| old.hand_id != view.hand_id || old.phase != view.phase)
-                    {
-                        self.selected.clear();
-                    }
-                    self.selected.retain(|uid| {
-                        view.your_hand.iter().any(|c| c.uid == *uid)
-                            && (view.phase != Phase::Tribute || view.return_options.contains(uid))
-                    });
-                    if view.your_seat.is_some() {
-                        self.status = "Connected".into();
-                    }
-                    self.view = Some(*view);
-                }
+                Event::Message(Message::State(view)) => self.set_view(*view),
+                Event::Message(Message::Hint(hint)) => self.receive_hint(hint),
                 Event::Message(Message::Pong) => {}
             }
         }
     }
+    fn clear_selection(&mut self) {
+        self.selected.clear();
+        self.help = None;
+    }
+    fn set_view(&mut self, view: View) {
+        if self
+            .view
+            .as_ref()
+            .is_none_or(|old| old.hand_id != view.hand_id || old.phase != view.phase)
+            || self.help.is_some_and(|help| !help.matches(&view))
+        {
+            self.clear_selection();
+        }
+        self.selected.retain(|uid| {
+            view.your_hand.iter().any(|c| c.uid == *uid)
+                && (view.phase != Phase::Tribute || view.return_options.contains(uid))
+        });
+        if view.your_seat.is_some() {
+            self.status = "Connected".into();
+        }
+        self.view = Some(view);
+    }
+    fn help_label(&self) -> &'static str {
+        if self.help.is_some() || !self.selected.is_empty() {
+            "cancel"
+        } else {
+            "help"
+        }
+    }
+    fn toggle_help(&mut self, view: &View) {
+        if self.help_label() == "cancel" {
+            self.clear_selection();
+            return;
+        }
+        let Some(seat) = view.your_seat else {
+            return;
+        };
+        if !self.connected || view.phase != Phase::Playing || view.turn != Some(seat) {
+            return;
+        }
+        self.next_help_request = self.next_help_request.wrapping_add(1);
+        let command = Command::Hint {
+            hand_id: view.hand_id,
+            request_id: self.next_help_request,
+        };
+        // Socket I/O and the host's heuristic run away from the UI thread.
+        let result = self
+            .connection
+            .as_ref()
+            .ok_or_else(|| "Connect to a table before asking for help.".to_string())
+            .and_then(|c| c.send(command));
+        match result {
+            Ok(()) => {
+                self.help = Some(PlayHelp {
+                    request_id: self.next_help_request,
+                    hand_id: view.hand_id,
+                    revision: view.revision,
+                    seat,
+                    status: HelpStatus::Pending,
+                });
+                self.error = None;
+            }
+            Err(error) => self.error = Some(error),
+        }
+    }
+    fn receive_hint(&mut self, hint: Hint) {
+        let Some(help) = self.help else {
+            return;
+        };
+        if help.status != HelpStatus::Pending || hint.request_id != help.request_id {
+            return;
+        }
+        let Some(view) = &self.view else {
+            return;
+        };
+        if !self.connected
+            || !help.matches(view)
+            || hint.hand_id != help.hand_id
+            || hint.revision != help.revision
+        {
+            self.clear_selection();
+            return;
+        }
+        match hint.cards {
+            Ok(uids) => {
+                let cards: Vec<_> = view
+                    .your_hand
+                    .iter()
+                    .copied()
+                    .filter(|c| uids.contains(&c.uid))
+                    .collect();
+                let valid = cards.len() == uids.len()
+                    && if cards.is_empty() {
+                        view.trick.is_some()
+                    } else {
+                        classify(&cards, view.level)
+                            .is_some_and(|c| c.beats(view.trick.as_ref().map(|p| &p.combo)))
+                    };
+                if !valid {
+                    self.clear_selection();
+                    self.error =
+                        Some("The suggestion is no longer legal. Ask for help again.".into());
+                    return;
+                }
+                self.selected = uids.into_iter().collect();
+                self.help = Some(PlayHelp {
+                    status: if self.selected.is_empty() {
+                        HelpStatus::Pass
+                    } else {
+                        HelpStatus::Cards
+                    },
+                    ..help
+                });
+            }
+            Err(error) => {
+                self.clear_selection();
+                self.error = Some(error);
+            }
+        }
+    }
     fn connect(&mut self, address: String) {
+        self.straight_flush_view = false;
         self.connection = Some(Connection::connect(
             address.clone(),
             self.settings.name.clone(),
@@ -251,7 +396,7 @@ impl GuandanApp {
         self.endpoint = address;
         self.connected = false;
         self.view = None;
-        self.selected.clear();
+        self.clear_selection();
         self.error = None;
         self.status = "Connecting…".into();
     }
@@ -276,10 +421,11 @@ impl GuandanApp {
         }
     }
     fn leave(&mut self) {
+        self.straight_flush_view = false;
         self.connection = None;
         self.host = None;
         self.view = None;
-        self.selected.clear();
+        self.clear_selection();
         self.connected = false;
         self.error = None;
         self.status.clear();
@@ -289,7 +435,7 @@ impl GuandanApp {
         if let Some(c) = &self.connection {
             match c.send(command) {
                 Ok(()) => {
-                    self.selected.clear();
+                    self.clear_selection();
                     self.error = None;
                 }
                 Err(error) => self.error = Some(error),
@@ -509,76 +655,517 @@ impl GuandanApp {
     fn hand(&mut self, ctx: &egui::Context, view: &View) {
         let screen = ctx.screen_rect().size();
         let layout = Layout::for_size(screen);
-        egui::TopBottomPanel::bottom("hand")
-            .max_height(screen.y*0.68)
-            .frame(egui::Frame::new().fill(OBSIDIAN).inner_margin(layout.margin))
-            .show(ctx,|ui| {
-                let mine=view.your_seat;
-                let your_turn=self.connected && view.phase==Phase::Playing && view.turn==mine && mine.is_some();
-                let returning=self.connected && view.phase==Phase::Tribute && !view.return_options.is_empty();
-                // Bound explanatory text separately: it must never displace the buttons.
-                egui::ScrollArea::vertical().id_salt("hand-info").max_height((screen.y*0.18).clamp(32.0,120.0)).min_scrolled_height(0.0).auto_shrink([false,true]).show(ui,|ui| {
-                    if view.show_tribute {
-                        if let Some(t)=&view.tribute {
-                            let who=|s:usize| if Some(s)==mine {"you".to_string()} else {view.seats[s].name.clone()};
-                            if t.rebellion {ui.colored_label(SILVER,format!("Tribute rebellion · no exchange · {} leads",who(t.leader)));}
-                            else if returning {
-                                let e=t.exchanges.iter().find(|e|Some(e.to)==mine).unwrap();
-                                let low=view.your_hand.iter().any(|c|view.return_options.contains(&c.uid) && c.rank!=view.level && (2..=9).contains(&c.rank));
-                                ui.colored_label(SILVER,format!("You received {} from {}. {}",e.tribute,who(e.from),if low {"Choose a highlighted non-trump 2–9 to return."} else {"No eligible 2–9: return your highlighted lowest non-wild card."}));
-                            } else if !t.complete {ui.colored_label(SILVER,"Waiting for the other tribute recipients to choose their returns…");}
-                            else {ui.colored_label(SILVER,format!("Tribute exchange complete · {} leads",who(t.leader)));}
-                            ui.label(RichText::new(t.exchanges.iter().map(|e|format!("{} → {}: {}{}",who(e.from),who(e.to),e.tribute,e.returned.map_or(String::new(),|c|format!(" · returned {c}")))).collect::<Vec<_>>().join("     ")).small().color(PEWTER));
-                        }
-                    }
-                    ui.horizontal_wrapped(|ui| {
-                        ui.label(RichText::new(format!("YOUR HAND · {} cards",view.your_hand.len())).small().color(PEWTER));
-                        ui.label(RichText::new(status_text(view)).color(if your_turn {ICE} else {SILVER}).font(FontId::proportional(14.0*layout.scale)));
-                    });
-                    if let Some(error)=&self.error {ui.colored_label(ERROR,error);}
-                    if !self.connected && !self.demo {ui.small("The host must remain running. Rejoining takes an open seat.");}
-                });
-                let card_size=Vec2::new(layout.card_height*51.0/76.0,layout.card_height);
-                let lift=layout.card_height*0.16;
-                egui::ScrollArea::horizontal().id_salt("hand-scroll").max_height(card_size.y+lift+14.0).show(ui,|ui| {
-                    // Keep the entire rank/suit index exposed. Very narrow windows
-                    // scroll the hand rather than cover the symbols on adjacent cards.
-                    let min_step=26.0*card_scale(card_size);
-                    let step=((ui.available_width()-card_size.x)/view.your_hand.len().saturating_sub(1).max(1) as f32).clamp(min_step,33.0);
-                    let width=if view.your_hand.is_empty() {0.0} else {step*(view.your_hand.len()-1) as f32+card_size.x};
-                    let (area,_)=ui.allocate_exact_size(Vec2::new(width.max(1.0),card_size.y+lift+6.0),Sense::hover());
-                    for (i,card) in view.your_hand.iter().enumerate() {
-                        let selected=self.selected.contains(&card.uid);
-                        let eligible=!returning || view.return_options.contains(&card.uid);
-                        let rect=Rect::from_min_size(area.min+Vec2::new(i as f32*step,if selected {1.0} else {lift}),card_size);
-                        draw_card(ui.painter(),rect,*card,view.level,selected,returning && eligible,returning && !eligible);
-                        let hit=Rect::from_min_size(rect.min,Vec2::new(if i+1==view.your_hand.len() {card_size.x} else {step},card_size.y));
-                        let response=ui.interact(hit,ui.id().with(("card",card.uid)),Sense::click());
-                        #[cfg(test)]
-                        ui.ctx().data_mut(|d|d.insert_temp(egui::Id::new(("hand-card",card.uid)),(response.rect,ui.clip_rect())));
-                        if response.clicked() && (your_turn || returning) && eligible {
-                            if returning {self.selected.clear();if !selected {self.selected.insert(card.uid);}}
-                            else if selected {self.selected.remove(&card.uid);} else {self.selected.insert(card.uid);}
-                        }
-                        response.on_hover_text(format!("{card}{}",if card.is_wild(view.level) {" · wildcard"} else if card.rank==view.level {" · level trump"} else {""}));
-                    }
-                });
-                let selected_cards:Vec<_>=view.your_hand.iter().copied().filter(|c|self.selected.contains(&c.uid)).collect();
-                let selected_combo=classify(&selected_cards,view.level);
+        let your_turn = self.connected
+            && view.phase == Phase::Playing
+            && view.your_seat.is_some()
+            && view.turn == view.your_seat;
+        let returning =
+            self.connected && view.phase == Phase::Tribute && !view.return_options.is_empty();
+        // Allocate actions first at the bottom. A tall suit grid can only scroll
+        // its own viewport, never push the toggle or play controls off screen.
+        let actions = egui::TopBottomPanel::bottom("hand-actions")
+            .frame(
+                egui::Frame::new()
+                    .fill(OBSIDIAN)
+                    .inner_margin(egui::Margin::symmetric(layout.margin as i8, 4)),
+            )
+            .show(ctx, |ui| {
+                let selected_cards: Vec<_> = view
+                    .your_hand
+                    .iter()
+                    .copied()
+                    .filter(|c| self.selected.contains(&c.uid))
+                    .collect();
+                let selected_combo = classify(&selected_cards, view.level);
                 ui.horizontal_wrapped(|ui| {
-                    if view.phase==Phase::Tribute {
-                        if control(ui,"return","Return selected card",returning && self.selected.len()==1).clicked() {self.send(Command::Return {hand_id:view.hand_id,card:*self.selected.first().unwrap()});}
+                    if view.phase == Phase::Tribute {
+                        if control(
+                            ui,
+                            "return",
+                            "Return selected card",
+                            returning && self.selected.len() == 1,
+                        )
+                        .clicked()
+                        {
+                            self.send(Command::Return {
+                                hand_id: view.hand_id,
+                                card: *self.selected.first().unwrap(),
+                            });
+                        }
                     } else {
-                        let legal=your_turn && selected_combo.as_ref().is_some_and(|c|c.beats(view.trick.as_ref().map(|p|&p.combo)));
-                        if control(ui,"play","Play selected",legal).clicked() {self.send(Command::Play {hand_id:view.hand_id,cards:self.selected.iter().copied().collect()});}
-                        if control(ui,"pass","Pass",your_turn && view.trick.is_some()).clicked() {self.send(Command::Pass {hand_id:view.hand_id});}
+                        let legal = your_turn
+                            && selected_combo
+                                .as_ref()
+                                .is_some_and(|c| c.beats(view.trick.as_ref().map(|p| &p.combo)));
+                        if control(ui, "play", "Play selected", legal).clicked() {
+                            self.send(Command::Play {
+                                hand_id: view.hand_id,
+                                cards: self.selected.iter().copied().collect(),
+                            });
+                        }
+                        if control(ui, "pass", "Pass", your_turn && view.trick.is_some()).clicked()
+                        {
+                            self.send(Command::Pass {
+                                hand_id: view.hand_id,
+                            });
+                        }
                     }
-                    if control(ui,"clear","Clear selection",!self.selected.is_empty()).clicked() {self.selected.clear();}
-                    if view.phase==Phase::GameOver && control(ui,"new-game","New game",true).clicked() {self.send(Command::NewGame);}
-                    if !self.connected && !self.demo && control(ui,"reconnect","Reconnect",true).clicked() {self.connect(self.endpoint.clone());}
-                    if !selected_cards.is_empty() && view.phase!=Phase::Tribute {ui.label(selected_combo.as_ref().map_or("Not a legal combination",|c|c.label()));}
+                    if control(ui, "clear", "Clear selection", !self.selected.is_empty()).clicked()
+                    {
+                        self.clear_selection();
+                    }
+                    if control(
+                        ui,
+                        "help",
+                        self.help_label(),
+                        your_turn || self.help.is_some() || !self.selected.is_empty(),
+                    )
+                    .clicked()
+                    {
+                        self.toggle_help(view);
+                    }
+                    if control(ui, "flush-view", self.hand_view_label(), true).clicked() {
+                        self.straight_flush_view = !self.straight_flush_view;
+                    }
+                    if view.phase == Phase::GameOver
+                        && control(ui, "new-game", "New game", true).clicked()
+                    {
+                        self.send(Command::NewGame);
+                    }
+                    if !self.connected
+                        && !self.demo
+                        && control(ui, "reconnect", "Reconnect", true).clicked()
+                    {
+                        self.connect(self.endpoint.clone());
+                    }
+                    if !selected_cards.is_empty() && view.phase != Phase::Tribute {
+                        ui.label(
+                            selected_combo
+                                .as_ref()
+                                .map_or("Not a legal combination", |c| c.label()),
+                        );
+                    }
+                    if let Some(help) = self.help {
+                        match help.status {
+                            HelpStatus::Pending => {
+                                ui.small("Finding a level 3 suggestion…");
+                            }
+                            HelpStatus::Pass => {
+                                ui.colored_label(ICE, "Level 3: pass recommended.");
+                            }
+                            HelpStatus::Cards => {}
+                        }
+                    }
                 });
             });
+        let hand_fraction = if self.straight_flush_view { 0.54 } else { 0.68 };
+        let limit = (screen.y * hand_fraction - actions.response.rect.height())
+            .min(ctx.available_rect().height())
+            .max(70.0);
+        let height = if self.straight_flush_view {
+            (screen.y * 0.066).clamp(40.0, 50.0)
+        } else {
+            layout.card_height
+        };
+        let card_size = Vec2::new(height * 51.0 / 76.0, height);
+        let lift = height * if self.straight_flush_view { 0.08 } else { 0.16 };
+        let min_cards = height + lift + 14.0 + if self.straight_flush_view { 20.0 } else { 0.0 };
+        let wanted = if self.straight_flush_view {
+            20.0 + 4.0 * (height + lift + 4.0) + 14.0
+        } else {
+            min_cards
+        };
+        let spacing = ctx.style().spacing.item_spacing.y;
+        let info_limit = (screen.y * 0.18)
+            .clamp(
+                32.0,
+                if self.straight_flush_view {
+                    52.0
+                } else {
+                    120.0
+                },
+            )
+            .min((limit - 2.0 * layout.margin - 2.0 * spacing - min_cards).max(16.0));
+        // Fit the suit rows instead of filling the whole height allowance.
+        // The table receives the reclaimed space above this bottom panel.
+        let panel_height = (info_limit + wanted + 2.0 * layout.margin + 2.0 * spacing).min(limit);
+        egui::TopBottomPanel::bottom("hand")
+            .exact_height(panel_height)
+            .frame(
+                egui::Frame::new()
+                    .fill(OBSIDIAN)
+                    .inner_margin(layout.margin),
+            )
+            .show(ctx, |ui| {
+                egui::ScrollArea::vertical()
+                    .id_salt("hand-info")
+                    .max_height(info_limit)
+                    .min_scrolled_height(0.0)
+                    .auto_shrink([false, true])
+                    .show(ui, |ui| {
+                        self.hand_information(ui, view, your_turn, returning, layout)
+                    });
+                let available = ui.available_height().max(24.0);
+                egui::ScrollArea::both()
+                    .drag_to_scroll(false)
+                    .id_salt(if self.straight_flush_view {
+                        "suit-hand-scroll"
+                    } else {
+                        "hand-scroll"
+                    })
+                    .max_height(available.min(wanted))
+                    .min_scrolled_height(0.0)
+                    .auto_shrink([false, true])
+                    .show(ui, |ui| {
+                        if self.straight_flush_view {
+                            self.suit_hand(ui, view, card_size, lift);
+                        } else {
+                            self.regular_hand(ui, view, card_size, lift);
+                        }
+                    });
+            });
+    }
+
+    fn hand_view_label(&self) -> &'static str {
+        if self.straight_flush_view {
+            "restore regular view"
+        } else {
+            "see straight flushes"
+        }
+    }
+
+    fn hand_information(
+        &self,
+        ui: &mut egui::Ui,
+        view: &View,
+        your_turn: bool,
+        returning: bool,
+        layout: Layout,
+    ) {
+        if view.show_tribute {
+            if let Some(t) = &view.tribute {
+                let who = |s: usize| {
+                    if Some(s) == view.your_seat {
+                        "you".to_string()
+                    } else {
+                        view.seats[s].name.clone()
+                    }
+                };
+                if t.rebellion {
+                    ui.colored_label(
+                        SILVER,
+                        format!("Tribute rebellion · no exchange · {} leads", who(t.leader)),
+                    );
+                } else if returning {
+                    let e = t
+                        .exchanges
+                        .iter()
+                        .find(|e| Some(e.to) == view.your_seat)
+                        .unwrap();
+                    let low = view.your_hand.iter().any(|c| {
+                        view.return_options.contains(&c.uid)
+                            && c.rank != view.level
+                            && (2..=9).contains(&c.rank)
+                    });
+                    ui.colored_label(
+                        SILVER,
+                        format!(
+                            "You received {} from {}. {}",
+                            e.tribute,
+                            who(e.from),
+                            if low {
+                                "Choose a highlighted non-trump 2–9 to return."
+                            } else {
+                                "No eligible 2–9: return your highlighted lowest non-wild card."
+                            }
+                        ),
+                    );
+                } else if !t.complete {
+                    ui.colored_label(
+                        SILVER,
+                        "Waiting for the other tribute recipients to choose their returns…",
+                    );
+                } else {
+                    ui.colored_label(
+                        SILVER,
+                        format!("Tribute exchange complete · {} leads", who(t.leader)),
+                    );
+                }
+                ui.label(
+                    RichText::new(
+                        t.exchanges
+                            .iter()
+                            .map(|e| {
+                                format!(
+                                    "{} → {}: {}{}",
+                                    who(e.from),
+                                    who(e.to),
+                                    e.tribute,
+                                    e.returned
+                                        .map_or(String::new(), |c| format!(" · returned {c}"))
+                                )
+                            })
+                            .collect::<Vec<_>>()
+                            .join("     "),
+                    )
+                    .small()
+                    .color(PEWTER),
+                );
+            }
+        }
+        ui.horizontal_wrapped(|ui| {
+            ui.label(
+                RichText::new(format!("YOUR HAND · {} cards", view.your_hand.len()))
+                    .small()
+                    .color(PEWTER),
+            );
+            ui.label(
+                RichText::new(status_text(view))
+                    .color(if your_turn { ICE } else { SILVER })
+                    .font(FontId::proportional(14.0 * layout.scale)),
+            );
+        });
+        if let Some(error) = &self.error {
+            ui.colored_label(ERROR, error);
+        }
+        if !self.connected && !self.demo {
+            ui.small("The host must remain running. Rejoining takes an open seat.");
+        }
+        if self.straight_flush_view {
+            ui.label(
+                RichText::new(
+                    "Printed ranks 2–A · Wild hearts can complete any suit · A can also be low",
+                )
+                .small()
+                .color(PEWTER),
+            );
+        }
+    }
+
+    fn regular_hand(&mut self, ui: &mut egui::Ui, view: &View, card_size: Vec2, lift: f32) {
+        let min_step = 26.0 * card_scale(card_size);
+        let step = ((ui.available_width() - card_size.x)
+            / view.your_hand.len().saturating_sub(1).max(1) as f32)
+            .clamp(min_step, 33.0);
+        let width = if view.your_hand.is_empty() {
+            0.0
+        } else {
+            step * (view.your_hand.len() - 1) as f32 + card_size.x
+        };
+        let (area, _) = ui.allocate_exact_size(
+            Vec2::new(width.max(1.0), card_size.y + lift + 6.0),
+            Sense::hover(),
+        );
+        for (i, card) in view.your_hand.iter().enumerate() {
+            let rect = Rect::from_min_size(
+                area.min
+                    + Vec2::new(
+                        i as f32 * step,
+                        if self.selected.contains(&card.uid) {
+                            1.0
+                        } else {
+                            lift
+                        },
+                    ),
+                card_size,
+            );
+            self.hand_card(
+                ui,
+                view,
+                *card,
+                rect,
+                if i + 1 == view.your_hand.len() {
+                    card_size.x
+                } else {
+                    step
+                },
+            );
+        }
+    }
+
+    fn suit_hand(&mut self, ui: &mut egui::Ui, view: &View, card_size: Vec2, lift: f32) {
+        let label_width = 30.0;
+        let duplicate_step = 26.0 * card_scale(card_size);
+        let column = card_size.x + duplicate_step + 4.0;
+        let row_pitch = card_size.y + lift + 4.0;
+        let mut jokers: Vec<_> = view
+            .your_hand
+            .iter()
+            .copied()
+            .filter(|c| c.is_joker())
+            .collect();
+        jokers.sort_by_key(|c| (c.rank, c.uid));
+        let suit_width = label_width + column * 13.0;
+        let joker_width = if jokers.is_empty() {
+            0.0
+        } else {
+            14.0 + card_size.x.max(38.0)
+        };
+        let (area, _) = ui.allocate_exact_size(
+            Vec2::new(suit_width + joker_width, 20.0 + 4.0 * row_pitch),
+            Sense::hover(),
+        );
+        for rank in 2..=14 {
+            ui.painter().text(
+                area.min
+                    + Vec2::new(
+                        label_width
+                            + (rank - 2) as f32 * column
+                            + (card_size.x + duplicate_step) * 0.5,
+                        8.0,
+                    ),
+                Align2::CENTER_CENTER,
+                rank_label(rank),
+                FontId::proportional(10.0),
+                PEWTER,
+            );
+        }
+        for (row, suit) in [Suit::Spades, Suit::Hearts, Suit::Diamonds, Suit::Clubs]
+            .into_iter()
+            .enumerate()
+        {
+            let y = area.top() + 20.0 + row as f32 * row_pitch;
+            let label = Card {
+                uid: 0,
+                rank: 3,
+                suit,
+            };
+            ui.painter().text(
+                Pos2::new(area.left() + 11.0, y + lift + card_size.y * 0.5),
+                Align2::CENTER_CENTER,
+                label.suit_label(),
+                FontId::proportional(17.0),
+                if label.is_red() { ICE } else { SILVER },
+            );
+            for rank in 2..=14 {
+                let x = area.left() + label_width + (rank - 2) as f32 * column;
+                let mut cards: Vec<_> = view
+                    .your_hand
+                    .iter()
+                    .copied()
+                    .filter(|c| c.suit == suit && c.rank == rank)
+                    .collect();
+                cards.sort_by_key(|c| c.uid);
+                if cards.is_empty() {
+                    ui.painter().rect_stroke(
+                        Rect::from_min_size(Pos2::new(x, y + lift), card_size),
+                        3.0,
+                        Stroke::new(1.0_f32, Color32::from_rgb(27, 40, 58)),
+                        egui::StrokeKind::Inside,
+                    );
+                }
+                for (i, card) in cards.iter().enumerate() {
+                    let rect = Rect::from_min_size(
+                        Pos2::new(
+                            x + i as f32 * duplicate_step,
+                            y + if self.selected.contains(&card.uid) {
+                                1.0
+                            } else {
+                                lift
+                            },
+                        ),
+                        card_size,
+                    );
+                    self.hand_card(
+                        ui,
+                        view,
+                        *card,
+                        rect,
+                        if i + 1 == cards.len() {
+                            card_size.x
+                        } else {
+                            duplicate_step
+                        },
+                    );
+                }
+            }
+        }
+        if !jokers.is_empty() {
+            let x = area.left() + suit_width + 14.0;
+            ui.painter().line_segment(
+                [
+                    Pos2::new(x - 7.0, area.top()),
+                    Pos2::new(x - 7.0, area.bottom()),
+                ],
+                Stroke::new(1.0_f32, HAIRLINE),
+            );
+            ui.painter().text(
+                Pos2::new(x + card_size.x * 0.5, area.top() + 8.0),
+                Align2::CENTER_CENTER,
+                "Jokers",
+                FontId::proportional(10.0),
+                PEWTER,
+            );
+            for (i, card) in jokers.iter().enumerate() {
+                let rect = Rect::from_min_size(
+                    Pos2::new(
+                        x,
+                        area.top()
+                            + 20.0
+                            + i as f32 * row_pitch
+                            + if self.selected.contains(&card.uid) {
+                                1.0
+                            } else {
+                                lift
+                            },
+                    ),
+                    card_size,
+                );
+                self.hand_card(ui, view, *card, rect, card_size.x);
+            }
+        }
+    }
+
+    fn hand_card(&mut self, ui: &mut egui::Ui, view: &View, card: Card, rect: Rect, exposed: f32) {
+        let returning =
+            self.connected && view.phase == Phase::Tribute && !view.return_options.is_empty();
+        let your_turn = self.connected
+            && view.phase == Phase::Playing
+            && view.your_seat.is_some()
+            && view.turn == view.your_seat;
+        let selected = self.selected.contains(&card.uid);
+        let eligible = !returning || view.return_options.contains(&card.uid);
+        draw_card(
+            ui.painter(),
+            rect,
+            card,
+            view.level,
+            selected,
+            returning && eligible,
+            returning && !eligible,
+        );
+        let hit = Rect::from_min_size(rect.min, Vec2::new(exposed, rect.height()));
+        let response = ui.interact(hit, ui.id().with(("card", card.uid)), Sense::click());
+        #[cfg(test)]
+        ui.ctx().data_mut(|d| {
+            d.insert_temp(
+                egui::Id::new(("hand-card", card.uid)),
+                (response.rect, ui.clip_rect()),
+            )
+        });
+        if response.clicked() && (your_turn || returning) && eligible {
+            self.help = None;
+            if returning {
+                self.selected.clear();
+                if !selected {
+                    self.selected.insert(card.uid);
+                }
+            } else if selected {
+                self.selected.remove(&card.uid);
+            } else {
+                self.selected.insert(card.uid);
+            }
+        }
+        response.on_hover_text(format!(
+            "{card}{}",
+            if card.is_wild(view.level) {
+                " · wildcard · can fill a missing rank in any suit"
+            } else if card.rank == view.level {
+                " · level trump"
+            } else {
+                ""
+            }
+        ));
     }
     fn table(&mut self, ctx: &egui::Context, view: &View) {
         let layout = Layout::for_size(ctx.screen_rect().size());
@@ -989,7 +1576,7 @@ fn draw_play(
     let size = Vec2::new(41.0, 59.0) * scale;
     let step = ((area.width() - size.x) / cards.len().saturating_sub(1).max(1) as f32)
         .max(1.0)
-        .min(24.0 * scale);
+        .min(size.x + 4.0 * scale);
     let width = size.x + step * cards.len().saturating_sub(1) as f32;
     let card_top = area.center().y - size.y / 2.0 + 4.0 * scale;
     if winning {
@@ -1187,6 +1774,9 @@ mod responsive_tests {
             host: None,
             view,
             selected: BTreeSet::new(),
+            help: None,
+            next_help_request: 0,
+            straight_flush_view: false,
             error: None,
             status: String::new(),
             show_log: false,
@@ -1309,6 +1899,8 @@ mod responsive_tests {
                     "play",
                     "pass",
                     "clear",
+                    "help",
+                    "flush-view",
                 ],
                 size,
             );
@@ -1409,6 +2001,187 @@ mod responsive_tests {
             }
         }
     }
+    fn suit_view() -> View {
+        let mut view = demo_view();
+        view.your_hand = crate::cards::deck()
+            .into_iter()
+            .filter(|c| {
+                (c.uid < 54 && (3..=7).contains(&c.rank))
+                    || c.is_wild(2)
+                    || (c.uid >= 54 && c.rank == 5 && c.suit == Suit::Spades)
+                    || c.is_joker()
+            })
+            .collect();
+        view.your_hand.sort_by_key(|c| (c.power(2), c.rank, c.uid));
+        view.level = 2;
+        view.your_seat = Some(0);
+        view.turn = Some(0);
+        view.phase = Phase::Playing;
+        view.trick = None;
+        view
+    }
+    fn card_geometry(ctx: &egui::Context, uid: u8) -> (Rect, Rect) {
+        ctx.data(|d| d.get_temp(egui::Id::new(("hand-card", uid))))
+            .unwrap()
+    }
+    fn toggle_hand(app: &mut GuandanApp, ctx: &egui::Context, size: Vec2) {
+        click(app, ctx, size, geometry(ctx, "flush-view").0.center());
+        settle(app, ctx, size);
+    }
+    #[test]
+    fn suit_toggle_preserves_selection_and_groups_by_printed_rank() {
+        let size = Vec2::new(1400.0, 900.0);
+        let ctx = egui::Context::default();
+        let view = suit_view();
+        let cards = view.your_hand.clone();
+        assert_eq!(cards.len(), 27);
+        let mut app = app(Some(view));
+        settle(&mut app, &ctx, size);
+        assert_eq!(app.hand_view_label(), "see straight flushes");
+        let first = cards[0].uid;
+        let original = card_geometry(&ctx, first).0;
+        click(&mut app, &ctx, size, original.left_top() + Vec2::splat(4.0));
+        assert_eq!(app.selected, BTreeSet::from([first]));
+        toggle_hand(&mut app, &ctx, size);
+        assert!(app.straight_flush_view);
+        assert_eq!(app.hand_view_label(), "restore regular view");
+        assert_eq!(app.selected, BTreeSet::from([first]));
+        // Clear the raised card before comparing the row baselines.
+        click(&mut app, &ctx, size, geometry(&ctx, "clear").0.center());
+        settle(&mut app, &ctx, size);
+        let mut previous_row = None;
+        for suit in [Suit::Spades, Suit::Hearts, Suit::Diamonds, Suit::Clubs] {
+            let mut row: Vec<_> = cards.iter().filter(|c| c.suit == suit).collect();
+            row.sort_by_key(|c| (c.rank, c.uid));
+            let y = card_geometry(&ctx, row[0].uid).0.top();
+            if let Some(previous) = previous_row {
+                assert!(y > previous);
+            }
+            previous_row = Some(y);
+            for card in &row {
+                let (rect, clip) = card_geometry(&ctx, card.uid);
+                assert!(clip.contains_rect(rect), "{card} clipped");
+                assert!((rect.top() - y).abs() < 0.5);
+            }
+            for pair in row.windows(2) {
+                assert!(
+                    card_geometry(&ctx, pair[0].uid).0.left()
+                        < card_geometry(&ctx, pair[1].uid).0.left()
+                );
+            }
+        }
+        // Jokers remain selectable in their own column, after all suit cards.
+        let rightmost_suit = cards
+            .iter()
+            .filter(|c| !c.is_joker())
+            .map(|c| card_geometry(&ctx, c.uid).0.right())
+            .fold(0.0, f32::max);
+        for card in cards.iter().filter(|c| c.is_joker()) {
+            let (rect, clip) = card_geometry(&ctx, card.uid);
+            assert!(clip.contains_rect(rect));
+            assert!(rect.left() > rightmost_suit);
+            click(&mut app, &ctx, size, rect.center());
+            assert!(app.selected.contains(&card.uid));
+        }
+        // The two deck copies can be chosen independently, including wilds.
+        for card in cards.iter().filter(|c| c.is_wild(2)) {
+            let rect = card_geometry(&ctx, card.uid).0;
+            click(&mut app, &ctx, size, rect.left_top() + Vec2::splat(4.0));
+            assert!(app.selected.contains(&card.uid));
+        }
+        let selection = app.selected.clone();
+        toggle_hand(&mut app, &ctx, size);
+        assert!(!app.straight_flush_view);
+        assert_eq!(app.hand_view_label(), "see straight flushes");
+        assert_eq!(app.selected, selection);
+        assert_eq!(app.view.as_ref().unwrap().your_hand, cards);
+        assert_eq!(card_geometry(&ctx, first).0.left(), original.left());
+    }
+    #[test]
+    fn suit_rows_scroll_without_hiding_actions_and_keep_tribute_restrictions() {
+        let size = Vec2::new(420.0, 340.0);
+        let ctx = egui::Context::default();
+        let view = suit_view();
+        let cards = view.your_hand.clone();
+        let mut app = app(Some(view));
+        settle(&mut app, &ctx, size);
+        toggle_hand(&mut app, &ctx, size);
+        let mut reached = BTreeSet::new();
+        for row in 0..16 {
+            for _ in 0..24 {
+                for card in &cards {
+                    let (rect, clip) = card_geometry(&ctx, card.uid);
+                    if clip.expand(0.5).contains_rect(rect) {
+                        reached.insert(card.uid);
+                    }
+                }
+                assert_controls(&ctx, &["play", "pass", "clear", "flush-view"], size);
+                let clip = card_geometry(&ctx, cards[0].uid).1;
+                frame(
+                    &mut app,
+                    &ctx,
+                    size,
+                    vec![
+                        egui::Event::PointerMoved(clip.center()),
+                        egui::Event::MouseWheel {
+                            unit: egui::MouseWheelUnit::Point,
+                            delta: Vec2::new(if row % 2 == 0 { -50.0 } else { 50.0 }, 0.0),
+                            modifiers: Default::default(),
+                        },
+                    ],
+                );
+            }
+            let clip = card_geometry(&ctx, cards[0].uid).1;
+            frame(
+                &mut app,
+                &ctx,
+                size,
+                vec![
+                    egui::Event::PointerMoved(clip.center()),
+                    egui::Event::MouseWheel {
+                        unit: egui::MouseWheelUnit::Point,
+                        delta: Vec2::new(0.0, -20.0),
+                        modifiers: Default::default(),
+                    },
+                ],
+            );
+        }
+        assert_eq!(
+            reached.len(),
+            cards.len(),
+            "unreachable suit cards: {reached:?}"
+        );
+
+        let ctx = egui::Context::default();
+        let view = tribute_view();
+        let eligible = view
+            .your_hand
+            .iter()
+            .find(|c| c.suit == Suit::Spades && view.return_options.contains(&c.uid))
+            .unwrap()
+            .uid;
+        let trump = view
+            .your_hand
+            .iter()
+            .find(|c| c.suit == Suit::Spades && c.rank == 7)
+            .unwrap()
+            .uid;
+        let mut app = self::app(Some(view));
+        settle(&mut app, &ctx, size);
+        toggle_hand(&mut app, &ctx, size);
+        assert_controls(&ctx, &["return", "clear", "flush-view"], size);
+        for uid in [eligible, trump] {
+            let (rect, clip) = card_geometry(&ctx, uid);
+            assert!(
+                clip.contains_rect(rect),
+                "card {uid}: {rect:?} outside {clip:?}"
+            );
+            click(&mut app, &ctx, size, rect.left_top() + Vec2::splat(4.0));
+            assert_eq!(app.selected, BTreeSet::from([eligible]));
+        }
+        toggle_hand(&mut app, &ctx, size);
+        assert_eq!(app.selected, BTreeSet::from([eligible]));
+    }
     #[test]
     fn lobby_controls_are_reachable_by_scrolling_in_small_windows() {
         for size in [
@@ -1496,5 +2269,204 @@ mod responsive_tests {
         assert!(!app.show_log);
         settle(&mut app, &ctx, size);
         assert_controls(&ctx, &["play", "pass", "clear"], size);
+    }
+
+    fn pending_hint(app: &mut GuandanApp, request_id: u64, cards: Vec<u8>) -> Hint {
+        let view = app.view.as_ref().unwrap();
+        app.help = Some(PlayHelp {
+            request_id,
+            hand_id: view.hand_id,
+            revision: view.revision,
+            seat: view.your_seat.unwrap(),
+            status: HelpStatus::Pending,
+        });
+        Hint {
+            request_id,
+            hand_id: view.hand_id,
+            revision: view.revision,
+            cards: Ok(cards),
+        }
+    }
+
+    #[test]
+    fn help_ignores_cancelled_replaced_and_outdated_replies() {
+        let ctx = egui::Context::default();
+        let size = Vec2::new(420.0, 340.0);
+        let mut app = app(Some(suit_view()));
+        let uid = app.view.as_ref().unwrap().your_hand[0].uid;
+        let hint = pending_hint(&mut app, 1, vec![uid]);
+        settle(&mut app, &ctx, size);
+        assert_eq!(app.help_label(), "cancel");
+        assert_controls(&ctx, &["play", "pass", "clear", "help", "flush-view"], size);
+        click(&mut app, &ctx, size, geometry(&ctx, "help").0.center());
+        app.receive_hint(hint);
+        assert!(app.selected.is_empty());
+        assert!(app.help.is_none());
+        let invalid = pending_hint(&mut app, 6, vec![255]);
+        app.receive_hint(invalid);
+        assert!(app.selected.is_empty());
+        assert!(app.help.is_none());
+        assert!(app.error.is_some());
+        let mut rejected = pending_hint(&mut app, 7, vec![uid]);
+        rejected.cards = Err("Help is available during your turn after tribute.".into());
+        app.receive_hint(rejected);
+        assert!(app.selected.is_empty());
+        assert!(app.help.is_none());
+        assert_eq!(app.help_label(), "help");
+
+        let old = pending_hint(&mut app, 2, vec![uid]);
+        let hint = pending_hint(&mut app, 3, vec![uid]);
+        app.receive_hint(old);
+        assert_eq!(app.help.unwrap().request_id, 3);
+        settle(&mut app, &ctx, size);
+        // Manually choosing a card also abandons the pending suggestion.
+        let rect = card_geometry(&ctx, uid).0;
+        click(&mut app, &ctx, size, rect.left_top() + Vec2::splat(4.0));
+        assert_eq!(app.selected, BTreeSet::from([uid]));
+        assert!(app.help.is_none());
+        app.receive_hint(hint);
+        assert_eq!(app.selected, BTreeSet::from([uid]));
+        click(&mut app, &ctx, size, geometry(&ctx, "help").0.center());
+        assert!(app.selected.is_empty());
+
+        for change_hand in [false, true] {
+            let hint = pending_hint(&mut app, 4, vec![uid]);
+            app.receive_hint(hint.clone());
+            assert_eq!(app.selected, BTreeSet::from([uid]));
+            let mut updated = app.view.clone().unwrap();
+            if change_hand {
+                updated.hand_id += 1;
+            } else {
+                updated.revision += 1;
+                updated.turn = Some(1);
+            }
+            app.set_view(updated);
+            app.receive_hint(hint);
+            assert!(app.selected.is_empty());
+            assert!(app.help.is_none());
+            app.set_view(suit_view());
+        }
+        let mut hint = pending_hint(&mut app, 5, vec![uid]);
+        hint.revision += 1;
+        app.receive_hint(hint);
+        assert!(app.selected.is_empty());
+        assert!(app.help.is_none());
+    }
+
+    #[test]
+    fn help_pass_advice_is_visible_and_can_be_cancelled_in_a_small_window() {
+        for suit_rows in [false, true] {
+            let ctx = egui::Context::default();
+            let size = Vec2::new(420.0, 340.0);
+            let mut app = app(Some(demo_view()));
+            app.straight_flush_view = suit_rows;
+            let hint = pending_hint(&mut app, 1, Vec::new());
+            app.receive_hint(hint);
+            assert!(app.selected.is_empty());
+            assert!(app.help.is_some_and(|h| h.status == HelpStatus::Pass));
+            settle(&mut app, &ctx, size);
+            let output = frame(&mut app, &ctx, size, Vec::new());
+            assert!(output.shapes.iter().any(|shape| {
+                let egui::epaint::Shape::Text(text) = &shape.shape else {
+                    return false;
+                };
+                text.galley.job.text == "Level 3: pass recommended."
+                    && shape
+                        .clip_rect
+                        .expand(0.5)
+                        .contains_rect(text.visual_bounding_rect())
+            }));
+            assert_controls(&ctx, &["play", "pass", "clear", "help", "flush-view"], size);
+            click(&mut app, &ctx, size, geometry(&ctx, "help").0.center());
+            assert_eq!(app.help_label(), "help");
+            assert!(app.help.is_none());
+        }
+    }
+
+    #[test]
+    fn help_button_selects_a_play_from_a_native_host_in_both_views() {
+        use std::thread;
+        let server = ServerHandle::start("127.0.0.1:0".parse().unwrap()).unwrap();
+        // Occupy every seat so the position stays fixed while requesting advice.
+        let mut clients: Vec<_> = (0..4)
+            .map(|i| Connection::connect(server.address.to_string(), format!("Player {i}")))
+            .collect();
+        let mut views: Vec<Option<View>> = vec![None; 4];
+        let deadline = Instant::now() + Duration::from_secs(12);
+        loop {
+            for (client, view) in clients.iter().zip(&mut views) {
+                for event in client.events.try_iter() {
+                    match event {
+                        Event::Message(Message::State(state)) => *view = Some(*state),
+                        Event::Disconnected(error) | Event::Message(Message::Error(error)) => {
+                            panic!("{error}")
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            if views
+                .iter()
+                .all(|v| v.as_ref().is_some_and(|v| v.seats.iter().all(|s| !s.bot)))
+            {
+                break;
+            }
+            assert!(Instant::now() < deadline, "joining host timed out");
+            thread::sleep(Duration::from_millis(5));
+        }
+        let index = views
+            .iter()
+            .position(|v| {
+                let v = v.as_ref().unwrap();
+                v.your_seat == v.turn
+            })
+            .unwrap();
+        let view = views[index].take().unwrap();
+        let before = serde_json::to_value(&view).unwrap();
+        let mut app = app(Some(view));
+        app.connection = Some(clients.swap_remove(index));
+        let ctx = egui::Context::default();
+        for (suit_rows, size) in [
+            (false, Vec2::new(420.0, 340.0)),
+            (true, Vec2::new(1000.0, 700.0)),
+        ] {
+            app.straight_flush_view = suit_rows;
+            settle(&mut app, &ctx, size);
+            assert_eq!(app.help_label(), "help");
+            assert_controls(&ctx, &["help", "play", "pass", "clear", "flush-view"], size);
+            click(&mut app, &ctx, size, geometry(&ctx, "help").0.center());
+            assert!(app.help.is_some_and(|h| h.status == HelpStatus::Pending));
+            let deadline = Instant::now() + Duration::from_secs(12);
+            while app.help.is_some_and(|h| h.status == HelpStatus::Pending) {
+                app.poll();
+                assert!(app.error.is_none(), "{:?}", app.error);
+                assert!(Instant::now() < deadline, "help request timed out");
+                thread::sleep(Duration::from_millis(5));
+            }
+            assert!(app.help.is_some());
+            assert_eq!(app.help_label(), "cancel");
+            let view = app.view.as_ref().unwrap();
+            let cards: Vec<_> = view
+                .your_hand
+                .iter()
+                .copied()
+                .filter(|c| app.selected.contains(&c.uid))
+                .collect();
+            if cards.is_empty() {
+                assert!(view.trick.is_some());
+                assert!(app.help.is_some_and(|h| h.status == HelpStatus::Pass));
+            } else {
+                assert!(classify(&cards, view.level)
+                    .unwrap()
+                    .beats(view.trick.as_ref().map(|p| &p.combo)));
+                assert_eq!(cards.len(), app.selected.len());
+            }
+            assert_eq!(serde_json::to_value(view).unwrap(), before);
+            settle(&mut app, &ctx, size);
+            assert_controls(&ctx, &["help", "play", "pass", "clear", "flush-view"], size);
+            click(&mut app, &ctx, size, geometry(&ctx, "help").0.center());
+            assert!(app.selected.is_empty());
+            assert!(app.help.is_none());
+        }
     }
 }
