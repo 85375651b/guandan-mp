@@ -3,10 +3,18 @@ Four seats, two teams. You and the player opposite you are partners. Two decks
 are used: 108 cards, 27 per player. Empty seats are bots. Play waits for the
 first human; when everyone leaves, the next arrival starts a fresh game.
 
+牌桌
+四人分为两队，与正对面的玩家为搭档（对家）。使用两副牌，共 108 张，每人 27 张。
+空位由机器人补齐，首位真人入座后才开始出牌；所有真人离开后，下一位入座者将开始新比赛。
+
 CARDS AND COMBINATIONS
 Ordinary cards run 2, 3, …, 10, J, Q, K, A. All suits of the current level
 rank above Ace; small joker and big joker rank above them. The two hearts of
 the current level are wildcards. Wildcards cannot replace either joker.
+
+牌的大小与牌型
+普通牌从小到大为 2、3、…、10、J、Q、K、A。当前级数的所有花色均为级牌，
+大于 A；小王和大王又大于级牌。当前级数的两张红桃为逢人配，不能代替任何王。
 
 Play a single, pair (including two matching jokers), triple, triple plus pair,
 five-card straight, three consecutive pairs, or two consecutive triples.
@@ -14,6 +22,11 @@ Straights and straight flushes are exactly five cards. A may be low or high;
 K-A-2 wrapping is not allowed. Level cards use their printed rank in runs.
 Bombs are four or more matching ranks, five-card straight flushes, or all four
 jokers. Bombs beat ordinary plays; four jokers beat everything.
+
+合法牌型包括单张、对子（包括两张同种王）、三张、三带二、五张顺子、三连对与钢板
+（两组连续三张）。顺子和同花顺必须恰好五张，A 可作最小或最大，但不能 K-A-2 循环。
+连牌中的级牌按牌面点数排列。四张及以上同点数牌、五张同花顺或四王均为炸弹。
+炸弹大于普通牌型，四王炸最大。
 
 SELECTING CARDS
 Click cards in your hand, then Play selected. The selected combination is
@@ -32,6 +45,17 @@ Your cards appear in front of you; other plays appear in front of their owners.
 A silver outline marks the current winning play. The play log has a Close button;
 Escape closes the log and rules windows.
 
+选牌与操作
+点击手牌后选择 Play selected（出牌），按钮旁会预览牌型。跟牌时可以选择 Pass（过牌）。
+轮到你时，help（帮助）会使用与机器人相同的三级策略选牌；可直接出牌、手动调整，
+或用 cancel（取消）清空选择。若建议过牌，需点击 Pass 确认。取消也会放弃待返回的建议。
+普通视图与同花顺视图均支持帮助。每张牌左侧显示点数和花色，重叠时仍可辨认；
+窗口较窄时可横向滚动手牌。see straight flushes（查看同花顺）将手牌按四种花色分行，
+按牌面 2–A 对齐，空位表示缺牌。逢人配保留在红桃行，但可补任意花色；王单列显示。
+必要时可滚动网格。restore regular view（恢复普通视图）保留当前选牌并恢复通常排列。
+各玩家的出牌显示在各自座位前，银色轮廓标记当前最大出牌。出牌记录有关闭按钮，
+Esc 可关闭记录和规则窗口。
+
 FINISHING AND ACE
 A team finishing first and second ends the hand immediately. Otherwise, the
 hand ends after three finishers. The team with first place advances three
@@ -40,11 +64,22 @@ Win 1–2 or 1–3 while playing your own Ace level to win the game. Three
 consecutive 1–4 wins at your own Ace reset your team to 2. A loss breaks the
 streak. When a finished player wins a trick, their partner receives the lead.
 
+出完、升级与打 A
+同队获得第一、二名时立即结算本局；否则在三人出完后结算。
+第一名所在队伍按一二名、一三名、一四名分别升 3、2、1 级，最高停在 A。
+在本队打 A 时，以一二名或一三名获胜即可赢得比赛；连续三次以一四名获胜则退回 2，
+中间输局会中断计数。已出完的玩家获得出牌权时，由其对家接风首出。
+
 TRIBUTE, RETURN, AND REBELLION
 After the next deal, a 1–2 win makes both losers give their largest non-wild
 card. First place receives the higher offer, second place the lower. Equal
 offers may be assigned either way. For a 1–3 or 1–4 win, last place gives to
 first place. The new hand's level determines strength. Wildcards are exempt.
+
+进贡、还牌与抗贡
+下一局发牌后，若上局为一二名获胜，则两位输家各进贡最大的非逢人配牌；第一名收较大
+贡牌，第二名收较小贡牌，大小相同可任意分配。一三名或一四名获胜时，末名向第一名进贡。
+牌的大小按新一局级数计算，逢人配免贡。
 
 Each recipient returns ONE non-trump 2–9 to the exact person who gave them
 tribute. All suits of the level are trumps above Ace, so a 7 cannot be a normal
@@ -53,10 +88,19 @@ card may be returned. Highlighted cards are eligible. Choose one and click
 Return selected card. Both returns are revealed together. Bots choose their
 returns automatically. Normal play waits until the exchange is complete.
 
+每位收贡者向原进贡者还一张非级牌 2–9。所有花色的级牌均大于 A，
+因此打 7 时不能将任何花色的 7 作为普通还牌。若没有符合条件的 2–9，
+只能还最小的非逢人配牌。可还的牌会高亮，选牌后点击 Return selected card（还牌）。
+双贡的两张还牌会同时公开；机器人自动还牌。交换完成前不能开始正常出牌。
+
 Both big jokers among the two double-tribute donors cause rebellion. In a
 single tribute, last place must hold both. Rebellion skips the exchange and
 the previous first-place player leads. Otherwise the largest-card giver
 leads; ties go to the giver whose card went to first place.
+
+双贡时，两位进贡者合计持有两张大王即可抗贡；单贡时，末名必须一人持有两张大王。
+抗贡时不交换牌，由上一局第一名首出。未抗贡时，由进贡牌最大的玩家首出；
+若贡牌一样大，则由向第一名进贡的玩家首出。
 
 MULTIPLAYER
 The host and guests run the same desktop application. Connect Tailscale on
@@ -66,3 +110,10 @@ by default) in the host firewall and tailnet access rules. Keep the host
 application running. Closing the host closes the table for everyone.
 Disconnecting a guest gives their seat to a bot. Rejoining takes an open
 seat and may not restore the old seat. A disconnected guest can click Reconnect.
+
+多人联机
+房主和玩家均使用同一版本的桌面程序，并在各自电脑连接 Tailscale。
+房主选择 Host game（创建游戏）并分享邀请，好友选择 Join game（加入游戏）输入地址。
+房主防火墙及 tailnet 访问规则须允许所选 TCP 端口（默认 3000）。房主必须保持程序运行，
+关闭房主程序会关闭所有人的牌桌。好友断线后由机器人接管座位；重新加入会占用空位，
+不保证恢复原座位。断线后可点击 Reconnect（重新连接）。

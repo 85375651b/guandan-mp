@@ -1,5 +1,6 @@
 //! Newline-delimited JSON over TCP. Tailscale provides the private network.
 //! Socket I/O is nonblocking and runs off the GUI thread. No browser or Node runtime.
+use crate::i18n::text as tr;
 use crate::table::{Command, Message, Peer, Table, PROTOCOL_VERSION};
 use serde::{de::DeserializeOwned, Serialize};
 use std::{
@@ -42,10 +43,10 @@ impl Wire {
     fn queue(&mut self, message: &impl Serialize) -> io::Result<()> {
         let mut data = serde_json::to_vec(message).map_err(io::Error::other)?;
         if data.len() > MAX_FRAME {
-            return Err(io::Error::other("Network message is too large"));
+            return Err(io::Error::other(tr("Network message is too large")));
         }
         if self.output.iter().map(Vec::len).sum::<usize>() + data.len() > MAX_QUEUED {
-            return Err(io::Error::other("Connection is too slow"));
+            return Err(io::Error::other(tr("Connection is too slow")));
         }
         data.push(b'\n');
         self.output.push_back(data);
@@ -54,7 +55,7 @@ impl Wire {
     fn flush(&mut self) -> io::Result<()> {
         while let Some(data) = self.output.front() {
             match self.stream.write(&data[self.offset..]) {
-                Ok(0) => return Err(io::Error::other("Connection closed")),
+                Ok(0) => return Err(io::Error::other(tr("Connection closed"))),
                 Ok(n) => {
                     self.offset += n;
                     if self.offset == data.len() {
@@ -73,7 +74,7 @@ impl Wire {
         let mut buf = [0; 4096];
         for _ in 0..8 {
             match self.stream.read(&mut buf) {
-                Ok(0) => return Err(io::Error::other("Connection closed")),
+                Ok(0) => return Err(io::Error::other(tr("Connection closed"))),
                 Ok(n) => {
                     self.input.extend_from_slice(&buf[..n]);
                     self.last_seen = Instant::now();
@@ -86,22 +87,22 @@ impl Wire {
         let mut messages = Vec::new();
         while let Some(end) = self.input.iter().position(|b| *b == b'\n') {
             if end > MAX_FRAME {
-                return Err(io::Error::other("Oversized network frame"));
+                return Err(io::Error::other(tr("Oversized network frame")));
             }
             let message = serde_json::from_slice(&self.input[..end]).map_err(io::Error::other)?;
             self.input.drain(..=end);
             messages.push(message);
             if messages.len() > 64 {
-                return Err(io::Error::other("Too many commands"));
+                return Err(io::Error::other(tr("Too many commands")));
             }
         }
         if self.input.len() > MAX_FRAME {
-            return Err(io::Error::other("Oversized network frame"));
+            return Err(io::Error::other(tr("Oversized network frame")));
         }
         if self.last_seen.elapsed() > TIMEOUT {
-            return Err(io::Error::other(
+            return Err(io::Error::other(tr(
                 "Connection timed out. Check Tailscale and reconnect.",
-            ));
+            )));
         }
         Ok(messages)
     }
@@ -262,7 +263,7 @@ impl Connection {
                         break;
                     }
                 }
-                let mut wire=Wire::new(connected.ok_or_else(||io::Error::other("Could not reach the host. Check its Tailscale address, port, and that the game is running."))?)?;
+                let mut wire=Wire::new(connected.ok_or_else(||io::Error::other(tr("Could not reach the host. Check its Tailscale address, port, and that the game is running.")))?)?;
                 wire.queue(&Command::Join {
                     version: PROTOCOL_VERSION,
                     name,
@@ -306,7 +307,7 @@ impl Connection {
     pub fn send(&self, command: Command) -> Result<(), String> {
         self.sender
             .try_send(command)
-            .map_err(|_| "Connection is busy or closed. Reconnect to the table.".into())
+            .map_err(|_| tr("Connection is busy or closed. Reconnect to the table.").into())
     }
 }
 impl Drop for Connection {
@@ -322,9 +323,9 @@ pub fn normalize_address(address: &str) -> io::Result<String> {
         .unwrap_or(address.trim())
         .trim_end_matches('/');
     if raw.is_empty() || raw.contains('/') || raw.chars().any(char::is_whitespace) {
-        return Err(io::Error::other(
+        return Err(io::Error::other(tr(
             "Enter a Tailscale IP or hostname, optionally followed by :3000.",
-        ));
+        )));
     }
     if raw.parse::<std::net::IpAddr>().is_ok() && raw.contains(':') {
         return Ok(format!("[{raw}]:3000"));

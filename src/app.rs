@@ -1,3 +1,4 @@
+use crate::i18n::text as tr;
 use crate::{
     cards::{rank_label, Card, Suit},
     net::{Connection, Event, ServerHandle},
@@ -57,7 +58,7 @@ impl Layout {
 }
 
 fn control(ui: &mut egui::Ui, key: &'static str, label: &str, enabled: bool) -> egui::Response {
-    let response = theme::ghost_button(ui, label, enabled);
+    let response = theme::ghost_button(ui, tr(label), enabled);
     // Geometry assertions exercise the real widgets, including their clipping region.
     #[cfg(test)]
     ui.ctx().data_mut(|d| {
@@ -82,7 +83,7 @@ struct Settings {
 impl Default for Settings {
     fn default() -> Self {
         Self {
-            name: "Player".into(),
+            name: "Player 玩家".into(),
             address: "".into(),
             tailnet_ip: std::env::var("TAILSCALE_IP").unwrap_or_default(),
             port: 3000,
@@ -186,7 +187,7 @@ impl GuandanApp {
         };
         if demo {
             app.view = Some(demo_view());
-            app.status = "Preview · native interface".into();
+            app.status = tr("Preview · native interface").into();
             #[cfg(feature = "screenshot")]
             {
                 app.straight_flush_view =
@@ -250,7 +251,7 @@ impl GuandanApp {
             match event {
                 Event::Connected => {
                     self.connected = true;
-                    self.status = "Connected · joining the table…".into();
+                    self.status = tr("Connected · joining the table…").into();
                 }
                 Event::Disconnected(error) => {
                     if self.help.is_some() {
@@ -258,7 +259,7 @@ impl GuandanApp {
                     }
                     self.connected = false;
                     self.error = Some(error);
-                    self.status = "Disconnected".into();
+                    self.status = tr("Disconnected").into();
                 }
                 Event::Message(Message::Error(error)) => self.error = Some(error),
                 Event::Message(Message::State(view)) => self.set_view(*view),
@@ -285,7 +286,7 @@ impl GuandanApp {
                 && (view.phase != Phase::Tribute || view.return_options.contains(uid))
         });
         if view.your_seat.is_some() {
-            self.status = "Connected".into();
+            self.status = tr("Connected").into();
         }
         self.view = Some(view);
     }
@@ -316,7 +317,7 @@ impl GuandanApp {
         let result = self
             .connection
             .as_ref()
-            .ok_or_else(|| "Connect to a table before asking for help.".to_string())
+            .ok_or_else(|| tr("Connect to a table before asking for help.").to_string())
             .and_then(|c| c.send(command));
         match result {
             Ok(()) => {
@@ -368,7 +369,7 @@ impl GuandanApp {
                 if !valid {
                     self.clear_selection();
                     self.error =
-                        Some("The suggestion is no longer legal. Ask for help again.".into());
+                        Some(tr("The suggestion is no longer legal. Ask for help again.").into());
                     return;
                 }
                 self.selected = uids.into_iter().collect();
@@ -398,7 +399,7 @@ impl GuandanApp {
         self.view = None;
         self.clear_selection();
         self.error = None;
-        self.status = "Connecting…".into();
+        self.status = tr("Connecting…").into();
     }
     fn start_host(&mut self, solo: bool) {
         let bind = if solo {
@@ -415,7 +416,7 @@ impl GuandanApp {
             }
             Err(error) => {
                 self.error = Some(format!(
-                    "Could not host: {error}. Try a different port or close the other host."
+                    "Could not host: {error}. Try a different port or close the other host. / 无法创建房间：{error}。请更换端口或关闭其他房主程序。"
                 ))
             }
         }
@@ -452,20 +453,20 @@ impl GuandanApp {
                     ui.add_space(if layout.narrow { 8.0 } else { 20.0 });
                     ui.vertical_centered(|ui| {
                         theme::wordmark(ui, if layout.narrow {28.0} else {40.0});
-                        ui.label(RichText::new("A table for four. Wherever your friends are.").color(PEWTER));
+                        ui.label(RichText::new(tr("A table for four. Wherever your friends are.")).color(PEWTER));
                     });
                     ui.add_space(12.0);
                     let width=ui.available_width().min(820.0);
                     ui.vertical_centered(|ui| {
                         ui.allocate_ui_with_layout(Vec2::new(width,0.0),egui::Layout::top_down(egui::Align::Min),|ui| {
-                            ui.label("Your name");
+                            ui.label(tr("Your name"));
                             theme::input(ui, egui::TextEdit::singleline(&mut self.settings.name).char_limit(20).desired_width(ui.available_width()));
                             ui.add_space(8.0);
                             theme::container().show(ui,|ui| {
                                 ui.set_width(ui.available_width());
-                                ui.label(RichText::new("Play on this computer").heading().color(SILVER));
-                                ui.label("A fresh game with three bots. Works entirely offline.");
-                                if control(ui,"solo","Start solo game",true).clicked() {self.start_host(true);}
+                                ui.label(RichText::new(tr("Play on this computer")).heading().color(SILVER));
+                                ui.label(tr("A fresh game with three bots. Works entirely offline."));
+                                if control(ui,"solo",tr("Start solo game"),true).clicked() {self.start_host(true);}
                             });
                             ui.add_space(8.0);
                             if layout.narrow {
@@ -476,9 +477,9 @@ impl GuandanApp {
                                 ui.columns(2,|columns| {self.host_form(&mut columns[0]);self.join_form(&mut columns[1]);});
                             }
                             ui.add_space(8.0);
-                            ui.label(RichText::new("Empty seats are bots. Friends can take an open seat at any time.").color(PEWTER));
+                            ui.label(RichText::new(tr("Empty seats are bots. Friends can take an open seat at any time.")).color(PEWTER));
                             if let Some(error)=&self.error {ui.colored_label(ERROR,error);}
-                            if control(ui,"lobby-rules","Read the table rules",true).clicked() {self.show_rules=true;}
+                            if control(ui,"lobby-rules",tr("Read the table rules"),true).clicked() {self.show_rules=true;}
                         });
                     });
                 });
@@ -487,13 +488,13 @@ impl GuandanApp {
     fn host_form(&mut self, ui: &mut egui::Ui) {
         theme::container().show(ui, |ui| {
             ui.set_width(ui.available_width());
-            ui.label(RichText::new("Host a table").heading().color(SILVER));
-            ui.label("Friends join you through Tailscale or your LAN.");
+            ui.label(RichText::new(tr("Host a table")).heading().color(SILVER));
+            ui.label(tr("Friends join you through Tailscale or your LAN."));
             ui.horizontal_wrapped(|ui| {
-                ui.label("TCP port");
+                ui.label(tr("TCP port"));
                 ui.add(egui::DragValue::new(&mut self.settings.port).range(1024..=65535));
             });
-            ui.label("Your Tailscale IP (for invitations)");
+            ui.label(tr("Your Tailscale IP (for invitations)"));
             theme::input(
                 ui,
                 egui::TextEdit::singleline(&mut self.settings.tailnet_ip)
@@ -505,14 +506,14 @@ impl GuandanApp {
                 if control(
                     ui,
                     "detect-ip",
-                    "Detect Tailscale IP",
+                    tr("Detect Tailscale IP"),
                     self.discovery.is_none(),
                 )
                 .clicked()
                 {
                     self.detect_ip();
                 }
-                if control(ui, "host", "Host game", true).clicked() {
+                if control(ui, "host", tr("Host game"), true).clicked() {
                     self.start_host(false);
                 }
             });
@@ -521,9 +522,9 @@ impl GuandanApp {
     fn join_form(&mut self, ui: &mut egui::Ui) {
         theme::container().show(ui, |ui| {
             ui.set_width(ui.available_width());
-            ui.label(RichText::new("Join friends").heading().color(SILVER));
-            ui.label("Enter the host's address or paste an invitation.");
-            ui.label("Host address");
+            ui.label(RichText::new(tr("Join friends")).heading().color(SILVER));
+            ui.label(tr("Enter the host's address or paste an invitation."));
+            ui.label(tr("Host address"));
             theme::input(
                 ui,
                 egui::TextEdit::singleline(&mut self.settings.address)
@@ -532,11 +533,13 @@ impl GuandanApp {
                     .desired_width(ui.available_width()),
             );
             ui.label(
-                RichText::new("Everyone runs this desktop app and connects to Tailscale.")
-                    .color(PEWTER)
-                    .small(),
+                RichText::new(tr(
+                    "Everyone runs this desktop app and connects to Tailscale.",
+                ))
+                .color(PEWTER)
+                .small(),
             );
-            if control(ui, "join", "Join game", true).clicked() {
+            if control(ui, "join", tr("Join game"), true).clicked() {
                 self.settings.save();
                 self.connect(self.settings.address.clone());
             }
@@ -555,12 +558,12 @@ impl GuandanApp {
                 ui.horizontal_wrapped(|ui| {
                     theme::wordmark(ui, if layout.narrow { 18.0 } else { 23.0 });
                     ui.label(
-                        RichText::new(format!("Team A · {}", rank_label(view.team_levels[0])))
+                        RichText::new(format!("Team A A队 · {}", rank_label(view.team_levels[0])))
                             .color(ICE)
                             .font(FontId::proportional(14.0 * layout.scale)),
                     );
                     ui.label(
-                        RichText::new(format!("Team B · {}", rank_label(view.team_levels[1])))
+                        RichText::new(format!("Team B B队 · {}", rank_label(view.team_levels[1])))
                             .color(ICE)
                             .font(FontId::proportional(14.0 * layout.scale)),
                     );
@@ -571,7 +574,7 @@ impl GuandanApp {
                         ..Default::default()
                     };
                     wild.append(
-                        &format!("Wild · {} ", rank_label(view.level)),
+                        &format!("Wild 逢人配 · {} ", rank_label(view.level)),
                         0.0,
                         format.clone(),
                     );
@@ -588,9 +591,9 @@ impl GuandanApp {
                         ui,
                         "log-toggle",
                         if self.show_log {
-                            "Hide log"
+                            tr("Hide log")
                         } else {
-                            "Play log"
+                            tr("Play log")
                         },
                         true,
                     )
@@ -598,16 +601,16 @@ impl GuandanApp {
                     {
                         self.show_log = !self.show_log;
                     }
-                    if control(ui, "rules", "Rules", true).clicked() {
+                    if control(ui, "rules", tr("Rules"), true).clicked() {
                         self.show_rules = !self.show_rules;
                     }
                     if control(
                         ui,
                         "leave",
                         if self.host.is_some() {
-                            "Close table"
+                            tr("Close table")
                         } else {
-                            "Leave"
+                            tr("Leave")
                         },
                         true,
                     )
@@ -617,11 +620,11 @@ impl GuandanApp {
                     }
                     ui.label(
                         RichText::new(if self.demo {
-                            "Preview"
+                            tr("Preview")
                         } else if self.connected {
-                            "Connected"
+                            tr("Connected")
                         } else {
-                            "Offline"
+                            tr("Offline")
                         })
                         .small()
                         .color(PEWTER),
@@ -638,13 +641,15 @@ impl GuandanApp {
                         ui.horizontal_wrapped(|ui| {
                             ui.add(
                                 egui::Label::new(
-                                    RichText::new(format!("On your tailnet: {invitation}"))
-                                        .small()
-                                        .color(PEWTER),
+                                    RichText::new(format!(
+                                        "On your tailnet 组网邀请: {invitation}"
+                                    ))
+                                    .small()
+                                    .color(PEWTER),
                                 )
                                 .wrap(),
                             );
-                            if control(ui, "copy-invite", "Copy invitation", true).clicked() {
+                            if control(ui, "copy-invite", tr("Copy invitation"), true).clicked() {
                                 ctx.copy_text(invitation);
                             }
                         });
@@ -682,7 +687,7 @@ impl GuandanApp {
                         if control(
                             ui,
                             "return",
-                            "Return selected card",
+                            tr("Return selected card"),
                             returning && self.selected.len() == 1,
                         )
                         .clicked()
@@ -697,20 +702,27 @@ impl GuandanApp {
                             && selected_combo
                                 .as_ref()
                                 .is_some_and(|c| c.beats(view.trick.as_ref().map(|p| &p.combo)));
-                        if control(ui, "play", "Play selected", legal).clicked() {
+                        if control(ui, "play", tr("Play selected"), legal).clicked() {
                             self.send(Command::Play {
                                 hand_id: view.hand_id,
                                 cards: self.selected.iter().copied().collect(),
                             });
                         }
-                        if control(ui, "pass", "Pass", your_turn && view.trick.is_some()).clicked()
+                        if control(ui, "pass", tr("Pass"), your_turn && view.trick.is_some())
+                            .clicked()
                         {
                             self.send(Command::Pass {
                                 hand_id: view.hand_id,
                             });
                         }
                     }
-                    if control(ui, "clear", "Clear selection", !self.selected.is_empty()).clicked()
+                    if control(
+                        ui,
+                        "clear",
+                        tr("Clear selection"),
+                        !self.selected.is_empty(),
+                    )
+                    .clicked()
                     {
                         self.clear_selection();
                     }
@@ -728,13 +740,13 @@ impl GuandanApp {
                         self.straight_flush_view = !self.straight_flush_view;
                     }
                     if view.phase == Phase::GameOver
-                        && control(ui, "new-game", "New game", true).clicked()
+                        && control(ui, "new-game", tr("New game"), true).clicked()
                     {
                         self.send(Command::NewGame);
                     }
                     if !self.connected
                         && !self.demo
-                        && control(ui, "reconnect", "Reconnect", true).clicked()
+                        && control(ui, "reconnect", tr("Reconnect"), true).clicked()
                     {
                         self.connect(self.endpoint.clone());
                     }
@@ -742,16 +754,16 @@ impl GuandanApp {
                         ui.label(
                             selected_combo
                                 .as_ref()
-                                .map_or("Not a legal combination", |c| c.label()),
+                                .map_or(tr("Not a legal combination"), |c| tr(c.label())),
                         );
                     }
                     if let Some(help) = self.help {
                         match help.status {
                             HelpStatus::Pending => {
-                                ui.small("Finding a level 3 suggestion…");
+                                ui.small(tr("Finding a level 3 suggestion…"));
                             }
                             HelpStatus::Pass => {
-                                ui.colored_label(ICE, "Level 3: pass recommended.");
+                                ui.colored_label(ICE, tr("Level 3: pass recommended."));
                             }
                             HelpStatus::Cards => {}
                         }
@@ -846,7 +858,7 @@ impl GuandanApp {
             if let Some(t) = &view.tribute {
                 let who = |s: usize| {
                     if Some(s) == view.your_seat {
-                        "you".to_string()
+                        tr("you").to_string()
                     } else {
                         view.seats[s].name.clone()
                     }
@@ -854,7 +866,7 @@ impl GuandanApp {
                 if t.rebellion {
                     ui.colored_label(
                         SILVER,
-                        format!("Tribute rebellion · no exchange · {} leads", who(t.leader)),
+                        format!("Tribute rebellion · no exchange · {} leads / 抗贡，无需交换，由 {} 首出", who(t.leader), who(t.leader)),
                     );
                 } else if returning {
                     let e = t
@@ -870,25 +882,31 @@ impl GuandanApp {
                     ui.colored_label(
                         SILVER,
                         format!(
-                            "You received {} from {}. {}",
+                            "You received {} from {}. / 你收到 {} 的贡牌 {}。{}",
                             e.tribute,
                             who(e.from),
+                            who(e.from),
+                            e.tribute,
                             if low {
-                                "Choose a highlighted non-trump 2–9 to return."
+                                tr("Choose a highlighted non-trump 2–9 to return.")
                             } else {
-                                "No eligible 2–9: return your highlighted lowest non-wild card."
+                                tr("No eligible 2–9: return your highlighted lowest non-wild card.")
                             }
                         ),
                     );
                 } else if !t.complete {
                     ui.colored_label(
                         SILVER,
-                        "Waiting for the other tribute recipients to choose their returns…",
+                        tr("Waiting for the other tribute recipients to choose their returns…"),
                     );
                 } else {
                     ui.colored_label(
                         SILVER,
-                        format!("Tribute exchange complete · {} leads", who(t.leader)),
+                        format!(
+                            "Tribute exchange complete · {} leads / 进贡还牌完成，由 {} 首出",
+                            who(t.leader),
+                            who(t.leader)
+                        ),
                     );
                 }
                 ui.label(
@@ -902,7 +920,7 @@ impl GuandanApp {
                                     who(e.to),
                                     e.tribute,
                                     e.returned
-                                        .map_or(String::new(), |c| format!(" · returned {c}"))
+                                        .map_or(String::new(), |c| format!(" · returned 还牌 {c}"))
                                 )
                             })
                             .collect::<Vec<_>>()
@@ -915,9 +933,12 @@ impl GuandanApp {
         }
         ui.horizontal_wrapped(|ui| {
             ui.label(
-                RichText::new(format!("YOUR HAND · {} cards", view.your_hand.len()))
-                    .small()
-                    .color(PEWTER),
+                RichText::new(format!(
+                    "YOUR HAND 手牌 · {} cards 张",
+                    view.your_hand.len()
+                ))
+                .small()
+                .color(PEWTER),
             );
             ui.label(
                 RichText::new(status_text(view))
@@ -929,13 +950,15 @@ impl GuandanApp {
             ui.colored_label(ERROR, error);
         }
         if !self.connected && !self.demo {
-            ui.small("The host must remain running. Rejoining takes an open seat.");
+            ui.small(tr(
+                "The host must remain running. Rejoining takes an open seat.",
+            ));
         }
         if self.straight_flush_view {
             ui.label(
-                RichText::new(
+                RichText::new(tr(
                     "Printed ranks 2–A · Wild hearts can complete any suit · A can also be low",
-                )
+                ))
                 .small()
                 .color(PEWTER),
             );
@@ -1092,7 +1115,7 @@ impl GuandanApp {
             ui.painter().text(
                 Pos2::new(x + card_size.x * 0.5, area.top() + 8.0),
                 Align2::CENTER_CENTER,
-                "Jokers",
+                tr("Jokers"),
                 FontId::proportional(10.0),
                 PEWTER,
             );
@@ -1159,9 +1182,9 @@ impl GuandanApp {
         response.on_hover_text(format!(
             "{card}{}",
             if card.is_wild(view.level) {
-                " · wildcard · can fill a missing rank in any suit"
+                tr(" · wildcard · can fill a missing rank in any suit")
             } else if card.rank == view.level {
-                " · level trump"
+                tr(" · level trump")
             } else {
                 ""
             }
@@ -1180,9 +1203,9 @@ impl GuandanApp {
         if matches!(view.phase, Phase::HandOver | Phase::GameOver) {
             if let Some(result) = &view.result {
                 egui::Window::new(if view.phase == Phase::GameOver {
-                    "Game complete"
+                    tr("Game complete")
                 } else {
-                    "Hand complete"
+                    tr("Hand complete")
                 })
                 .id(egui::Id::new("result"))
                 .anchor(Align2::CENTER_CENTER, Vec2::ZERO)
@@ -1192,12 +1215,12 @@ impl GuandanApp {
                 .vscroll(true)
                 .show(ctx, |ui| {
                     ui.heading(format!(
-                        "Team {} {}",
+                        "Team 队伍 {} {}",
                         if result.team == 0 { "A" } else { "B" },
                         if result.passed_ace {
-                            "passes Ace!"
+                            tr("passes Ace!")
                         } else {
-                            "wins the hand"
+                            tr("wins the hand")
                         }
                     ));
                     for (i, s) in result.order.iter().enumerate() {
@@ -1206,7 +1229,7 @@ impl GuandanApp {
                             if i < result.actual_finish_count {
                                 format!("#{}", i + 1)
                             } else {
-                                "Did not finish".into()
+                                tr("Did not finish").into()
                             },
                             view.seats[*s].name
                         ));
@@ -1214,29 +1237,34 @@ impl GuandanApp {
                     if result.reset_to_two {
                         ui.colored_label(
                             SILVER,
-                            "Three consecutive 1–4 Ace wins: back to level 2.",
+                            tr("Three consecutive 1–4 Ace wins: back to level 2."),
                         );
                     } else if result.ace_failures > 0 {
                         ui.label(format!(
-                            "Stays at Ace · {} / 3 consecutive 1–4 wins",
+                            "Stays at Ace 保持打 A · {} / 3 consecutive 1–4 wins 连续一四名获胜",
                             result.ace_failures
                         ));
                     } else {
-                        ui.label(format!("Team level: {}", rank_label(result.level_after)));
+                        ui.label(format!(
+                            "Team level 队伍级数: {}",
+                            rank_label(result.level_after)
+                        ));
                     }
                     if result.passed_ace {
-                        if control(ui, "result-new-game", "Start a new game", true).clicked() {
+                        if control(ui, "result-new-game", tr("Start a new game"), true).clicked() {
                             self.send(Command::NewGame);
                         }
                     } else {
-                        ui.small("The next deal and tribute exchange start automatically.");
+                        ui.small(tr(
+                            "The next deal and tribute exchange start automatically.",
+                        ));
                     }
                 });
             }
         }
     }
     fn rules_window(&mut self, ctx: &egui::Context) {
-        egui::Window::new("Table rules")
+        egui::Window::new(tr("Table rules"))
             .open(&mut self.show_rules)
             .default_size([620.0, 480.0])
             .max_size(ctx.screen_rect().size() - Vec2::new(32.0, 48.0))
@@ -1248,8 +1276,8 @@ impl GuandanApp {
     }
     fn log_contents(&mut self, ui: &mut egui::Ui) {
         ui.horizontal_wrapped(|ui| {
-            ui.heading("Play log");
-            if control(ui, "log-close", "Close", true).clicked() {
+            ui.heading(tr("Play log"));
+            if control(ui, "log-close", tr("Close"), true).clicked() {
                 self.show_log = false;
             }
         });
@@ -1293,7 +1321,7 @@ impl GuandanApp {
             self.table(ctx, &view);
             if self.show_log && floating_log {
                 let mut open = true;
-                egui::Window::new("Play log")
+                egui::Window::new(tr("Play log"))
                     .id(egui::Id::new("floating-log"))
                     .open(&mut open)
                     .default_size([300.0, size.y * 0.55])
@@ -1312,7 +1340,7 @@ impl GuandanApp {
                         if let Some(error) = &self.error {
                             ui.colored_label(ERROR, error);
                         }
-                        if control(ui, "back", "Back", true).clicked() {
+                        if control(ui, "back", tr("Back"), true).clicked() {
                             self.leave();
                         }
                     });
@@ -1376,24 +1404,28 @@ fn paint_table(ui: &mut egui::Ui, view: &View) {
         (
             2,
             Pos2::new(center.x, r.top() + (33.0 * sy).max(26.0)),
-            "PARTNER",
+            tr("PARTNER"),
         ),
-        (3, Pos2::new(r.left() + 66.0 * sx, center.y), "OPPONENT"),
-        (1, Pos2::new(r.right() - 66.0 * sx, center.y), "OPPONENT"),
+        (3, Pos2::new(r.left() + 66.0 * sx, center.y), tr("OPPONENT")),
+        (
+            1,
+            Pos2::new(r.right() - 66.0 * sx, center.y),
+            tr("OPPONENT"),
+        ),
         (
             0,
             Pos2::new(center.x, r.bottom() - (31.0 * sy).max(26.0)),
-            "YOU",
+            tr("YOU"),
         ),
     ] {
         let seat = (mine + offset) % 4;
         let label = if r.width() < 650.0 {
             if offset == 2 {
-                "Partner".into()
+                tr("Partner").into()
             } else if offset == 0 {
-                "You".into()
+                tr("You").into()
             } else {
-                format!("Seat {}", seat + 1)
+                format!("Seat 座位 {}", seat + 1)
             }
         } else {
             format!("{role} · {}", seat + 1)
@@ -1458,7 +1490,7 @@ fn paint_table(ui: &mut egui::Ui, view: &View) {
             p.text(
                 area.center(),
                 Align2::CENTER_CENTER,
-                "Pass",
+                tr("Pass"),
                 FontId::proportional((15.0 * scale).max(9.0)),
                 PEWTER,
             );
@@ -1471,9 +1503,9 @@ fn paint_table(ui: &mut egui::Ui, view: &View) {
             center,
             Align2::CENTER_CENTER,
             if view.phase == Phase::Tribute {
-                "Tribute exchange"
+                tr("Tribute exchange")
             } else {
-                "A fresh trick"
+                tr("A fresh trick")
             },
             FontId::proportional((16.0 * scale).max(10.0)),
             PEWTER,
@@ -1483,26 +1515,32 @@ fn paint_table(ui: &mut egui::Ui, view: &View) {
 
 fn status_text(v: &View) -> String {
     match v.phase {
-        Phase::Waiting => "Waiting for a player to sit down".into(),
-        Phase::GameOver => "Game complete".into(),
-        Phase::HandOver => "Next hand starts automatically".into(),
+        Phase::Waiting => tr("Waiting for a player to sit down").into(),
+        Phase::GameOver => tr("Game complete").into(),
+        Phase::HandOver => tr("Next hand starts automatically").into(),
         Phase::Tribute => {
             if v.return_options.is_empty() {
-                "Waiting for return cards".into()
+                tr("Waiting for return cards").into()
             } else {
-                "Return one highlighted card".into()
+                tr("Return one highlighted card").into()
             }
         }
         Phase::Playing => {
             if v.your_seat.is_some() && v.turn == v.your_seat {
                 v.trick.as_ref().map_or_else(
-                    || "Your turn · lead any combination".into(),
-                    |p| format!("Your turn · beat {} or pass", p.combo.label()),
+                    || tr("Your turn · lead any combination").into(),
+                    |p| {
+                        format!(
+                            "Your turn 轮到你 · beat 压过 {} or pass 或过牌",
+                            tr(p.combo.label())
+                        )
+                    },
                 )
             } else {
                 format!(
-                    "Waiting for {}",
-                    v.turn.map_or("the table", |s| v.seats[s].name.as_str())
+                    "Waiting for 等待 {}",
+                    v.turn
+                        .map_or("the table 牌桌", |s| v.seats[s].name.as_str())
                 )
             }
         }
@@ -1543,9 +1581,9 @@ fn draw_seat(
         pos + Vec2::new(0.0, gap),
         Align2::CENTER_CENTER,
         format!(
-            "{} cards{}",
+            "{} cards 张{}",
             seat.count,
-            if seat.bot { " · bot" } else { "" }
+            if seat.bot { tr(" · bot") } else { "" }
         ),
         FontId::proportional((11.0 * scale).max(8.0)),
         PEWTER,
@@ -1593,7 +1631,7 @@ fn draw_play(
     p.text(
         Pos2::new(area.center().x, card_top - 8.0),
         Align2::CENTER_CENTER,
-        label,
+        tr(label),
         FontId::proportional((10.0 * scale).max(8.0)),
         if winning { SILVER } else { PEWTER },
     );
@@ -1687,14 +1725,14 @@ fn draw_card(
         p.text(
             Pos2::new(r.center().x, r.top() + 52.0 * scale),
             Align2::CENTER_CENTER,
-            if c.rank == 16 { "BIG" } else { "SMALL" },
+            if c.rank == 16 { tr("BIG") } else { tr("SMALL") },
             FontId::proportional(10.0 * scale),
             ink,
         );
         p.text(
             Pos2::new(r.center().x, r.top() + 65.0 * scale),
             Align2::CENTER_CENTER,
-            "JOKER",
+            tr("JOKER"),
             FontId::proportional(9.0 * scale),
             ink,
         );
@@ -1710,7 +1748,11 @@ fn draw_card(
             p.text(
                 r.center() + Vec2::new(0.0, 5.0),
                 Align2::CENTER_CENTER,
-                if c.is_wild(level) { "WILD" } else { "LEVEL" },
+                if c.is_wild(level) {
+                    tr("WILD")
+                } else {
+                    tr("LEVEL")
+                },
                 FontId::proportional((8.0 * scale).max(6.0)),
                 if dim { ink } else { PEWTER },
             );
@@ -1766,6 +1808,34 @@ pub fn demo_view() -> View {
 #[cfg(test)]
 mod responsive_tests {
     use super::*;
+
+    #[test]
+    fn bundled_fonts_render_chinese_in_labels_names_and_input_fields() {
+        let ctx = egui::Context::default();
+        let mut app = app(Some(demo_view()));
+        app.view.as_mut().unwrap().seats[0].name = "小明".into();
+        let output = frame(&mut app, &ctx, Vec2::new(1000.0, 700.0), Vec::new());
+        let chinese: String = concat!(
+            include_str!("i18n.rs"),
+            include_str!("game.rs"),
+            include_str!("table.rs"),
+            include_str!("../RULES.txt")
+        )
+        .chars()
+        .filter(|c| ('\u{3400}'..='\u{9fff}').contains(c))
+        .collect();
+        for font in [
+            theme::label_font(14.0),
+            FontId::proportional(14.0),
+            FontId::monospace(14.0),
+        ] {
+            assert!(
+                ctx.fonts(|f| f.has_glyphs(&font, &chinese)),
+                "missing Chinese glyphs in {font:?}"
+            );
+        }
+        assert!(output.shapes.iter().any(|shape| matches!(&shape.shape, egui::epaint::Shape::Text(t) if t.galley.job.text == "GUANDAN 掼蛋")));
+    }
 
     fn app(view: Option<View>) -> GuandanApp {
         GuandanApp {
@@ -2370,7 +2440,7 @@ mod responsive_tests {
                 let egui::epaint::Shape::Text(text) = &shape.shape else {
                     return false;
                 };
-                text.galley.job.text == "Level 3: pass recommended."
+                text.galley.job.text == tr("Level 3: pass recommended.")
                     && shape
                         .clip_rect
                         .expand(0.5)

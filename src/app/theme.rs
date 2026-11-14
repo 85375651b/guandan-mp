@@ -24,6 +24,16 @@ pub(super) fn install_fonts(ctx: &egui::Context) {
         egui::FontData::from_static(include_bytes!("../../assets/fonts/Cinzel-Variable.ttf"))
             .into(),
     );
+    fonts.font_data.insert(
+        "Droid Sans Fallback".into(),
+        egui::FontData::from_static(include_bytes!(
+            "../../assets/fonts/DroidSansFallbackFull.ttf"
+        ))
+        .into(),
+    );
+    for family in fonts.families.values_mut() {
+        family.push("Droid Sans Fallback".into());
+    }
     let mut family = vec!["Cinzel".into()];
     family.extend(fonts.families[&egui::FontFamily::Proportional].clone());
     fonts
@@ -98,6 +108,15 @@ pub(super) fn wordmark(ui: &mut egui::Ui, size: f32) {
             font_id: label_font(size),
             color: SILVER,
             extra_letter_spacing: size * 0.12,
+            ..Default::default()
+        },
+    );
+    job.append(
+        " 掼蛋",
+        0.0,
+        egui::TextFormat {
+            font_id: label_font(size),
+            color: SILVER,
             ..Default::default()
         },
     );

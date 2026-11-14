@@ -16,7 +16,7 @@ fn main() -> eframe::Result {
         .unwrap_or(initial_size);
     let options = eframe::NativeOptions {
         viewport: eframe::egui::ViewportBuilder::default()
-            .with_title("Guandan · Native Table")
+            .with_title("Guandan 掼蛋 · Native Table 原生牌桌")
             .with_app_id("guandan")
             .with_icon(icon)
             .with_inner_size(initial_size)

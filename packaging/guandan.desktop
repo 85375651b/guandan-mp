@@ -1,8 +1,8 @@
 [Desktop Entry]
 Version=1.0
 Type=Application
-Name=Guandan
-Comment=Native Guandan with bots and Tailscale multiplayer
+Name=Guandan 掼蛋
+Comment=Native Guandan with bots and Tailscale multiplayer / 原生掼蛋，支持机器人和 Tailscale 联机
 Exec=guandan
 Icon=guandan
 StartupWMClass=guandan

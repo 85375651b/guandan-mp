@@ -1,4 +1,5 @@
 use crate::cards::{deck, rank_label, Card, BIG_JOKER};
+use crate::i18n::text as tr;
 use crate::rules::{classify, Combo};
 use rand::{rngs::StdRng, seq::SliceRandom, Rng, SeedableRng};
 use serde::{Deserialize, Serialize};
@@ -153,7 +154,7 @@ impl Game {
         );
         self.sort_hands();
         self.note(format!(
-            "Hand {} · playing {}",
+            "Hand 局数 {} · playing 当前级数 {}",
             self.hand_id,
             rank_label(self.level)
         ));
@@ -200,7 +201,8 @@ impl Game {
         if rebellion {
             self.turn = Some(order[0]);
             self.note(format!(
-                "Tribute rebellion: both big jokers are on the tribute side. Seat {} leads.",
+                "Tribute rebellion: both big jokers are on the tribute side. Seat {} leads. / 抗贡：进贡方持有两张大王，由 {} 号首出。",
+                order[0] + 1,
                 order[0] + 1
             ));
         } else {
@@ -231,7 +233,7 @@ impl Game {
                     returned: None,
                 });
                 self.note(format!(
-                    "Seat {} gives {} to seat {} as tribute.",
+                    "Seat 座位 {} gives 进贡 {} to seat 给座位 {}.",
                     from + 1,
                     card,
                     to + 1
@@ -275,7 +277,7 @@ impl Game {
             .collect()
     }
     pub fn return_card(&mut self, seat: usize, uid: u8) -> Result<(), String> {
-        let card = self.return_options(seat).into_iter().find(|c| c.uid == uid).ok_or("Choose an eligible return card: a non-trump 2–9, or the lowest non-wild card if none is available.")?;
+        let card = self.return_options(seat).into_iter().find(|c| c.uid == uid).ok_or(tr("Choose an eligible return card: a non-trump 2–9, or the lowest non-wild card if none is available."))?;
         let t = self.tribute.as_mut().unwrap();
         t.exchanges
             .iter_mut()
@@ -296,7 +298,7 @@ impl Game {
                     returned: card,
                 });
                 self.note(format!(
-                    "Seat {} returns {} to seat {}.",
+                    "Seat 座位 {} returns 还牌 {} to seat 给座位 {}.",
                     e.to + 1,
                     card,
                     e.from + 1
@@ -305,17 +307,22 @@ impl Game {
             self.tribute.as_mut().unwrap().complete = true;
             self.turn = Some(leader);
             self.sort_hands();
-            self.note(format!("Exchange complete. Seat {} leads.", leader + 1));
+            self.note(format!(
+                "Exchange complete 交换完成. Seat 首出座位 {}.",
+                leader + 1
+            ));
         }
         Ok(())
     }
     pub fn play(&mut self, seat: usize, uids: &[u8]) -> Result<(), String> {
         if !self.legal_turn(seat) {
-            return Err("It is not your turn, or the tribute exchange is still pending.".into());
+            return Err(
+                tr("It is not your turn, or the tribute exchange is still pending.").into(),
+            );
         }
         let unique: HashSet<_> = uids.iter().copied().collect();
         if unique.len() != uids.len() {
-            return Err("A card cannot be selected twice.".into());
+            return Err(tr("A card cannot be selected twice.").into());
         }
         let cards: Vec<_> = self.hands[seat]
             .iter()
@@ -323,23 +330,23 @@ impl Game {
             .filter(|c| unique.contains(&c.uid))
             .collect();
         if cards.len() != uids.len() {
-            return Err("A selected card is not in your hand.".into());
+            return Err(tr("A selected card is not in your hand.").into());
         }
-        let combo =
-            classify(&cards, self.level).ok_or("Those cards do not form a legal combination.")?;
+        let combo = classify(&cards, self.level)
+            .ok_or(tr("Those cards do not form a legal combination."))?;
         if !combo.beats(self.trick.as_ref().map(|p| &p.combo)) {
-            return Err("That combination does not beat the current play.".into());
+            return Err(tr("That combination does not beat the current play.").into());
         }
         self.hands[seat].retain(|c| !unique.contains(&c.uid));
         self.note(format!(
-            "Seat {} plays {} ({})",
+            "Seat 座位 {} plays 出牌 {} ({})",
             seat + 1,
             cards
                 .iter()
                 .map(ToString::to_string)
                 .collect::<Vec<_>>()
                 .join(" "),
-            combo.label()
+            tr(combo.label())
         ));
         let played = Played { seat, cards, combo };
         self.history.push(PublicAction::Play(played.clone()));
@@ -352,7 +359,7 @@ impl Game {
             self.active[seat] = false;
             self.finished.push(seat);
             self.note(format!(
-                "Seat {} finishes #{}.",
+                "Seat 座位 {} finishes 出完，名次 #{}.",
                 seat + 1,
                 self.finished.len()
             ));
@@ -368,12 +375,12 @@ impl Game {
     }
     pub fn pass(&mut self, seat: usize) -> Result<(), String> {
         if !self.legal_turn(seat) {
-            return Err("It is not your turn.".into());
+            return Err(tr("It is not your turn.").into());
         }
         let winner = self
             .trick
             .as_ref()
-            .ok_or("The leader must play a combination.")?
+            .ok_or(tr("The leader must play a combination."))?
             .seat;
         self.history.push(PublicAction::Pass {
             seat,
@@ -383,10 +390,13 @@ impl Game {
         });
         self.passes += 1;
         self.passed[seat] = true;
-        self.note(format!("Seat {} passes.", seat + 1));
+        self.note(format!("Seat 座位 {} passes 过牌.", seat + 1));
         let needed = self.active.iter().filter(|a| **a).count() - usize::from(self.active[winner]);
         if self.passes >= needed {
-            self.note(format!("Seat {} wins the trick.", winner + 1));
+            self.note(format!(
+                "Seat 座位 {} wins the trick 赢得本轮出牌权.",
+                winner + 1
+            ));
             self.trick = None;
             self.passes = 0;
             self.passed = [false; 4];
@@ -452,20 +462,23 @@ impl Game {
             passed_ace,
         });
         self.note(format!(
-            "Team {} wins the hand. {}",
+            "Team 队伍 {} wins the hand 赢得本局. {}",
             if team == 0 { "A" } else { "B" },
             if reset_to_two {
-                "Three consecutive 1–4 Ace wins: back to 2.".into()
+                "Three consecutive 1–4 Ace wins: back to 2. / 打 A 连续三次一四名获胜，退回 2。"
+                    .into()
             } else if ace_failures > 0 {
-                format!("Stays at Ace ({ace_failures}/3 consecutive 1–4 wins).")
+                format!(
+                    "Stays at Ace 保持打 A ({ace_failures}/3 consecutive 1–4 wins 连续一四名获胜)."
+                )
             } else {
-                format!("Level {}.", rank_label(self.team_levels[team]))
+                format!("Level 级数 {}.", rank_label(self.team_levels[team]))
             }
         ));
         if passed_ace {
             self.winner = Some(team);
             self.note(format!(
-                "Team {} passes Ace and wins the game!",
+                "Team 队伍 {} passes Ace and wins the game 打过 A，赢得比赛！",
                 if team == 0 { "A" } else { "B" }
             ));
         }

@@ -1,6 +1,7 @@
 use crate::bot::{choose_move_with_history, Context};
 use crate::cards::Card;
 use crate::game::{Game, HandResult, Played};
+use crate::i18n::text as tr;
 use serde::{Deserialize, Serialize};
 
 use std::time::{Duration, Instant};
@@ -522,7 +523,7 @@ impl Table {
             game: Game::new(),
             seats: std::array::from_fn(|s| Seat {
                 peer: None,
-                name: format!("Bot {}", s + 1),
+                name: format!("Bot {} 机器人", s + 1),
             }),
             revision: 0,
             deadline: None,
@@ -579,9 +580,10 @@ impl Table {
         }
         if let Command::Join { version, name } = command {
             if version != PROTOCOL_VERSION {
-                return Err(
-                    "Different game version. Host and guests must run the same release.".into(),
-                );
+                return Err(tr(
+                    "Different game version. Host and guests must run the same release.",
+                )
+                .into());
             }
             if self.seat_of(peer).is_some() {
                 return Ok(());
@@ -590,7 +592,7 @@ impl Table {
                 .seats
                 .iter()
                 .position(|s| s.peer.is_none())
-                .ok_or("All four seats are occupied.")?;
+                .ok_or(tr("All four seats are occupied."))?;
             if self.humans() == 0 {
                 self.game = Game::new();
             }
@@ -603,18 +605,20 @@ impl Table {
             self.seats[seat] = Seat {
                 peer: Some(peer),
                 name: if name.is_empty() {
-                    "Guest".into()
+                    "Guest 访客".into()
                 } else {
                     name
                 },
             };
             self.game.note(format!(
-                "{} sits in seat {}.",
+                "{} sits in seat 入座 {}.",
                 self.seats[seat].name,
                 seat + 1
             ));
         } else {
-            let seat = self.seat_of(peer).ok_or("Join a seat before playing.")?;
+            let seat = self
+                .seat_of(peer)
+                .ok_or(tr("Join a seat before playing."))?;
             match command {
                 Command::Play { hand_id, cards } => {
                     self.check_hand(hand_id)?;
@@ -630,14 +634,14 @@ impl Table {
                 }
                 Command::NewGame => {
                     if self.game.winner.is_none() {
-                        return Err("The current game has not finished.".into());
+                        return Err(tr("The current game has not finished.").into());
                     }
                     self.game = Game::new();
                 }
                 Command::Join { .. } => unreachable!(),
                 Command::Ping => unreachable!(),
                 Command::Hint { .. } => {
-                    return Err("Help requests do not change the table.".into());
+                    return Err(tr("Help requests do not change the table.").into());
                 }
             }
         }
@@ -649,7 +653,7 @@ impl Table {
         if id == self.game.hand_id {
             Ok(())
         } else {
-            Err("That action belongs to a previous hand. Select your cards again.".into())
+            Err(tr("That action belongs to a previous hand. Select your cards again.").into())
         }
     }
     /// Run the same level 3 policy as a bot, using only this player's cards,
@@ -659,9 +663,9 @@ impl Table {
             self.check_hand(hand_id)?;
             let seat = self
                 .seat_of(peer)
-                .ok_or("Join a seat before asking for help.")?;
+                .ok_or(tr("Join a seat before asking for help."))?;
             if !self.game.legal_turn(seat) {
-                return Err("Help is available during your turn after tribute.".into());
+                return Err(tr("Help is available during your turn after tribute.").into());
             }
             Ok(self
                 .choice(seat)
@@ -689,13 +693,13 @@ impl Table {
     pub fn disconnect(&mut self, peer: Peer, now: Instant) -> bool {
         if let Some(seat) = self.seat_of(peer) {
             self.game.note(format!(
-                "{} left. A bot takes seat {}.",
+                "{} left 已离开. A bot takes seat 机器人接管座位 {}.",
                 self.seats[seat].name,
                 seat + 1
             ));
             self.seats[seat] = Seat {
                 peer: None,
-                name: format!("Bot {}", seat + 1),
+                name: format!("Bot {} 机器人", seat + 1),
             };
             self.revision += 1;
             self.schedule(now);

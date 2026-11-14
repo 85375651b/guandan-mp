@@ -75,7 +75,20 @@ pub fn rank_label(rank: u8) -> &'static str {
 
 impl fmt::Display for Card {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}{}", self.rank_label(), self.suit_label())
+        if self.is_joker() {
+            write!(
+                f,
+                "{} {}",
+                self.rank_label(),
+                if self.rank == BIG_JOKER {
+                    "大王"
+                } else {
+                    "小王"
+                }
+            )
+        } else {
+            write!(f, "{}{}", self.rank_label(), self.suit_label())
+        }
     }
 }
 

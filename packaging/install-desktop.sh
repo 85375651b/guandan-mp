@@ -8,8 +8,8 @@ data_dir=${XDG_DATA_HOME:-"$HOME/.local/share"}
 bin_dir="$HOME/.local/bin"
 
 if [ "$#" -gt 1 ] || [ ! -f "$game_binary" ] || [ ! -x "$game_binary" ]; then
-    echo "Usage: $0 [path-to-compiled-guandan]" >&2
-    echo "Build first: cargo build --release --locked --bin guandan" >&2
+    echo "Usage 用法: $0 [path-to-compiled-guandan / 已编译的程序路径]" >&2
+    echo "Build first 请先编译: cargo build --release --locked --bin guandan" >&2
     exit 1
 fi
 
@@ -20,6 +20,9 @@ install -Dm644 "$project_dir/assets/icons/guandan.png" \
     "$data_dir/icons/hicolor/256x256/apps/guandan.png"
 install -Dm644 "$project_dir/packaging/guandan.desktop" \
     "$data_dir/applications/guandan.desktop"
+for notice in NOTICE.md OFL-Cinzel.txt LICENSE-DroidSansFallback.txt; do
+    install -Dm644 "$project_dir/assets/fonts/$notice" "$data_dir/guandan/licenses/$notice"
+done
 
 # Exec follows desktop-entry quoting, not shell quoting. Use an absolute path so
 # launching from a desktop session does not depend on ~/.local/bin being on PATH.
@@ -43,4 +46,4 @@ fi
 if command -v kbuildsycoca6 >/dev/null 2>&1; then
     kbuildsycoca6 --noincremental >/dev/null 2>&1 || true
 fi
-printf 'Installed Guandan and its navy spade icon. Relaunch the game to use it.\n'
+printf 'Installed Guandan and its navy spade icon. Relaunch the game to use it. / 已安装掼蛋及藏蓝色黑桃图标，请重新启动游戏。\n'
