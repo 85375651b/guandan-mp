@@ -15,7 +15,10 @@ use std::{
 };
 
 mod theme;
-use theme::{CANVAS, CARD_TOP, ERROR, HAIRLINE, ICE, OBSIDIAN, PEWTER, SILVER};
+use theme::{
+    CANVAS, CARD_TOP, ERROR, HAIRLINE, HEART_INK, ICE, OBSIDIAN, PEWTER, SILVER, SPADE_INK,
+    WILD_INK,
+};
 
 #[derive(Clone, Copy)]
 struct Layout {
@@ -582,7 +585,7 @@ impl GuandanApp {
                         "♥",
                         0.0,
                         egui::TextFormat {
-                            color: ICE,
+                            color: WILD_INK,
                             ..format
                         },
                     );
@@ -1058,7 +1061,12 @@ impl GuandanApp {
                 Align2::CENTER_CENTER,
                 label.suit_label(),
                 FontId::proportional(17.0),
-                if label.is_red() { ICE } else { SILVER },
+                match suit {
+                    Suit::Spades => SPADE_INK,
+                    Suit::Hearts => HEART_INK,
+                    Suit::Diamonds => ICE,
+                    _ => SILVER,
+                },
             );
             for rank in 2..=14 {
                 let x = area.left() + label_width + (rank - 2) as f32 * column;
@@ -1686,13 +1694,19 @@ fn draw_card(
     );
     let ink = if dim {
         Color32::from_rgb(101, 108, 117)
+    } else if c.suit == Suit::Spades {
+        SPADE_INK
+    } else if c.suit == Suit::Hearts {
+        HEART_INK
     } else {
         SILVER
     };
     let suit_ink = if dim {
         ink
     } else if c.is_wild(level) {
-        Color32::from_rgb(191, 219, 254)
+        WILD_INK
+    } else if c.suit == Suit::Hearts {
+        HEART_INK
     } else if c.is_red() {
         ICE
     } else {
