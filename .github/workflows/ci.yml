@@ -9,6 +9,10 @@ jobs:
     runs-on: ubuntu-latest
     container: ubuntu:22.04
     steps:
+      - name: Install system packages
+        run: |
+          apt-get update
+          apt-get install -y curl build-essential git ca-certificates
       - uses: actions/checkout@v4
 
       - name: Install Rust
