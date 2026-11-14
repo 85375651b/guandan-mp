@@ -483,6 +483,6 @@ sh packaging/install-desktop.sh
 
 ![Bilingual home page with solo, host, and join controls / 中英双语首页，包含单人游戏、创建房间和加入好友](docs/screenshots/home.png)
 
-### Gameplay preview / 游戏界面预览
+### Gameplay / 游戏实况
 
-![Bilingual gameplay preview with played cards in front of each player / 中英双语游戏界面预览，各玩家出牌显示在各自座位前](docs/screenshots/gameplay.png)
+![Actual gameplay with played cards in front of each player / 游戏实况，各玩家出牌显示在各自座位前](docs/screenshots/gameplay.png)
